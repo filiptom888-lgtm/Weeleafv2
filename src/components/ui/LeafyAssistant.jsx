@@ -1,0 +1,67 @@
+import React, { useState, useCallback } from 'react'
+import useStore from '../../store/useStore'
+
+const LEAFY_GIF = 'http://weeleaf.com/wp-content/uploads/2026/02/ezgif-6bf49774fe4d6570.gif'
+
+function LeafyImg({ size = 72 }) {
+  return (
+    <img
+      src={LEAFY_GIF}
+      width={size}
+      height={size}
+      alt="Leafy"
+      draggable={false}
+      style={{
+        filter: 'drop-shadow(0 0 12px rgba(74,222,128,0.75))',
+        objectFit: 'contain',
+      }}
+    />
+  )
+}
+
+export default function LeafyAssistant() {
+  const { toggleChat } = useStore()
+  const [cornerHovered, setCornerHovered] = useState(false)
+
+  const handleContextMenu = useCallback(
+    (e) => {
+      e.preventDefault()
+      toggleChat()
+    },
+    [toggleChat]
+  )
+
+  return (
+    <div
+      className="fixed bottom-5 right-5 z-40 cursor-pointer select-none"
+      onMouseEnter={() => setCornerHovered(true)}
+      onMouseLeave={() => setCornerHovered(false)}
+      onContextMenu={handleContextMenu}
+      title="Right-click to chat with Leafy"
+    >
+      <div
+        className="transition-transform duration-300"
+        style={{
+          transform: cornerHovered ? 'scale(1.12)' : 'scale(1)',
+          animation: 'float 3.5s ease-in-out infinite',
+        }}
+      >
+        <LeafyImg size={74} />
+      </div>
+
+      {cornerHovered && (
+        <div
+          className="absolute bottom-full mb-2 right-0 whitespace-nowrap text-xs px-3 py-1.5 rounded-full border pointer-events-none"
+          style={{
+            background: 'rgba(6,22,14,0.85)',
+            backdropFilter: 'blur(12px)',
+            borderColor: 'rgba(74,222,128,0.3)',
+            color: '#86efac',
+          }}
+        >
+          Right-click to chat with Leafy ✨
+        </div>
+      )}
+    </div>
+  )
+}

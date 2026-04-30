@@ -804,6 +804,124 @@ function DonationAdmin() {
     </div>
   )
 }
+/* ─── GitHub publish admin ───────────────────────────────────────────── */
+const GH_SETTINGS_KEY = 'wl_gh_settings'
+const DEFAULT_GH = { token: '', owner: 'filiptom888-lgtm', repo: 'Weeleafv2', branch: 'main' }
+
+function loadGhSettings() {
+  try { const r = localStorage.getItem(GH_SETTINGS_KEY); return r ? { ...DEFAULT_GH, ...JSON.parse(r) } : DEFAULT_GH } catch { return DEFAULT_GH }
+}
+
+async function publishConfigToGitHub({ token, owner, repo, branch }, config) {
+  const path = 'public/wl-config.json'
+  const apiBase = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`
+  const headers = { Authorization: `token ${token}`, Accept: 'application/vnd.github.v3+json', 'Content-Type': 'application/json' }
+
+  // 1. Get current file SHA
+  const getRes = await fetch(`${apiBase}?ref=${branch}`, { headers })
+  if (!getRes.ok && getRes.status !== 404) throw new Error(`GitHub GET fejl: ${getRes.status}`)
+  const current = getRes.ok ? await getRes.json() : null
+  const sha = current?.sha
+
+  // 2. Encode and push
+  const content = btoa(unescape(encodeURIComponent(JSON.stringify(config, null, 2))))
+  const body = { message: 'admin: opdater wl-config.json', content, branch, ...(sha ? { sha } : {}) }
+  const putRes = await fetch(apiBase, { method: 'PUT', headers, body: JSON.stringify(body) })
+  if (!putRes.ok) {
+    const err = await putRes.json().catch(() => ({}))
+    throw new Error(err.message || `GitHub PUT fejl: ${putRes.status}`)
+  }
+  return true
+}
+
+function PublishAdmin() {
+  const [settings, setSettings] = useState(loadGhSettings)
+  const [status, setStatus] = useState('idle') // idle | loading | ok | error
+  const [errMsg, setErrMsg] = useState('')
+  const [showToken, setShowToken] = useState(false)
+  const inputCls = 'w-full text-sm rounded-lg px-3 py-2 text-white/85 placeholder-white/25 outline-none border bg-white/5 border-white/10 focus:border-green-400/40 transition-colors'
+
+  const save = (patch) => {
+    const updated = { ...settings, ...patch }
+    setSettings(updated)
+    try { localStorage.setItem(GH_SETTINGS_KEY, JSON.stringify(updated)) } catch {}
+  }
+
+  const handlePublish = async () => {
+    if (!settings.token) { setErrMsg('Indsæt dit GitHub token først'); setStatus('error'); return }
+    setStatus('loading'); setErrMsg('')
+    try {
+      const { coins, shopCategories, blogPosts, donationConfig } = useStore.getState()
+      await publishConfigToGitHub(settings, { coins, shopCategories, blogPosts, donationConfig })
+      setStatus('ok')
+      setTimeout(() => setStatus('idle'), 4000)
+    } catch (e) {
+      setErrMsg(e.message)
+      setStatus('error')
+    }
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="text-white/50 text-[11px] uppercase tracking-widest font-semibold">🚀 Publicér Live</div>
+
+      {/* Info box */}
+      <div className="rounded-xl p-3 text-xs text-white/50 space-y-1" style={{ background: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.15)' }}>
+        <p>Gem dine ændringer direkte til GitHub. Siden genbygges automatisk (~1 min), og alle brugere ser de nye indstillinger.</p>
+      </div>
+
+      {/* Token */}
+      <div>
+        <label className="block text-white/50 text-xs mb-1">
+          GitHub Personal Access Token
+          <a href="https://github.com/settings/tokens/new?scopes=repo&description=WL+Admin" target="_blank" rel="noopener noreferrer" className="ml-2 text-green-400/70 hover:text-green-400 underline">Opret token ↗</a>
+        </label>
+        <div className="flex gap-2">
+          <input
+            className={inputCls}
+            type={showToken ? 'text' : 'password'}
+            value={settings.token}
+            onChange={(e) => save({ token: e.target.value })}
+            placeholder="ghp_xxxxxxxxxxxx"
+          />
+          <button onClick={() => setShowToken(s => !s)} className="px-2 text-white/30 hover:text-white/60 text-xs">{showToken ? '🙈' : '👁'}</button>
+        </div>
+        <p className="text-[10px] text-white/25 mt-1">Gemmes kun i din browser. Vælg scope: <code className="text-white/40">repo</code> (eller <code className="text-white/40">contents:write</code> for fine-grained).</p>
+      </div>
+
+      {/* Repo settings */}
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="block text-white/50 text-xs mb-1">GitHub bruger / org</label>
+          <input className={inputCls} value={settings.owner} onChange={(e) => save({ owner: e.target.value })} placeholder="filiptom888-lgtm" />
+        </div>
+        <div>
+          <label className="block text-white/50 text-xs mb-1">Repository navn</label>
+          <input className={inputCls} value={settings.repo} onChange={(e) => save({ repo: e.target.value })} placeholder="Weeleafv2" />
+        </div>
+      </div>
+      <div>
+        <label className="block text-white/50 text-xs mb-1">Branch</label>
+        <input className={inputCls} value={settings.branch} onChange={(e) => save({ branch: e.target.value })} placeholder="main" />
+      </div>
+
+      {/* Publish button */}
+      <button
+        onClick={handlePublish}
+        disabled={status === 'loading'}
+        className="w-full py-3 rounded-xl text-sm font-bold transition-all disabled:opacity-50"
+        style={{ background: status === 'ok' ? 'rgba(74,222,128,0.3)' : status === 'error' ? 'rgba(248,113,113,0.2)' : 'rgba(74,222,128,0.2)', border: `1px solid ${status === 'ok' ? 'rgba(74,222,128,0.5)' : status === 'error' ? 'rgba(248,113,113,0.4)' : 'rgba(74,222,128,0.35)'}`, color: status === 'error' ? '#fca5a5' : '#86efac' }}
+      >
+        {status === 'loading' ? '⏳ Publicerer…' : status === 'ok' ? '✅ Publiceret! Siden genbygges…' : status === 'error' ? '❌ Fejl — prøv igen' : '🚀 Publicér Live'}
+      </button>
+
+      {status === 'error' && errMsg && (
+        <p className="text-xs text-red-400/80 break-all">{errMsg}</p>
+      )}
+    </div>
+  )
+}
+
 /* ─── Admin Panel ────────────────────────────────────────────────────── */
 export default function AdminPanel() {
   const { isAdminOpen, toggleAdmin, coins, addCoin, updateCoin, deleteCoin, resetCoins } = useStore()
@@ -896,7 +1014,7 @@ export default function AdminPanel() {
 
         {/* Tab switcher */}
         {authed && <div className="flex gap-1 px-4 pt-3 pb-1">
-          {[{ key: 'coins', label: '🌿 Nodes' }, { key: 'shop', label: '🛍️ Shop' }, { key: 'blog', label: '📝 Blog' }, { key: 'donation', label: '💳 Give' }].map(({ key, label }) => (
+          {[{ key: 'coins', label: '🌿 Nodes' }, { key: 'shop', label: '🛍️ Shop' }, { key: 'blog', label: '📝 Blog' }, { key: 'donation', label: '💳 Give' }, { key: 'publish', label: '🚀 Publicér' }].map(({ key, label }) => (
             <button
               key={key}
               onClick={() => { setActiveTab(key); setEditingId(null) }}
@@ -919,6 +1037,9 @@ export default function AdminPanel() {
 
           {/* Donation tab */}
           {activeTab === 'donation' && <DonationAdmin />}
+
+          {/* Publish tab */}
+          {activeTab === 'publish' && <PublishAdmin />}
 
           {/* Coins tab */}
           {activeTab === 'coins' && (

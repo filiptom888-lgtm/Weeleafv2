@@ -16,7 +16,6 @@ const ACTIVE_POS = new THREE.Vector3(0, 1.2, 6.5)
 export default function Coin3D({ coin }) {
   const wrapperRef = useRef()
   const meshRef = useRef()
-  const glowRef = useRef()
 
   // Smooth lerp targets (mutable refs — no react state, no re-renders)
   const posRef = useRef(new THREE.Vector3())
@@ -61,13 +60,6 @@ export default function Coin3D({ coin }) {
     scaleRef.current += (targetScale - scaleRef.current) * 0.1
     wrapperRef.current.scale.setScalar(scaleRef.current)
 
-    // Glow opacity
-    if (glowRef.current) {
-      const baseOpacity = isActive ? 0.42 : hoveredRef.current ? 0.28 : 0.06
-      glowRef.current.material.opacity =
-        baseOpacity + Math.sin(t * (isActive ? 3.5 : 1.5) + coinAngleRad) * 0.08
-    }
-
     // Emissive intensity — only applies when disc is visible (no image)
     if (meshRef.current && !coin.imageUrl) {
       const baseEmi = isActive ? 0.7 : hoveredRef.current ? 0.45 : 0.14
@@ -100,17 +92,6 @@ export default function Coin3D({ coin }) {
   return (
     <group ref={wrapperRef}>
       <Billboard>
-        {/* Outer halo glow */}
-        <mesh ref={glowRef} renderOrder={-1}>
-          <circleGeometry args={[COIN_RADIUS * 1.65, 32]} />
-          <meshBasicMaterial
-            color={coin.color}
-            transparent
-            opacity={0.06}
-            depthWrite={false}
-            blending={THREE.AdditiveBlending}
-          />
-        </mesh>
 
         {/* Active ring pulse */}
         {isActive && (
@@ -192,11 +173,13 @@ export default function Coin3D({ coin }) {
         <Text
           position={[0, -COIN_RADIUS - 0.26, 0]}
           fontSize={0.118}
-          color={isActive ? coin.color : '#ffffffaa'}
+          color={isActive ? coin.color : '#ffffff'}
+          fillOpacity={isActive ? 1 : 0.65}
           anchorX="center"
           anchorY="middle"
           outlineWidth={0.008}
-          outlineColor="#00000080"
+          outlineColor="#000000"
+          outlineOpacity={0.45}
         >
           {coin.subtitle}
         </Text>

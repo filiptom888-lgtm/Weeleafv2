@@ -1,13 +1,15 @@
 import React, { useEffect, useRef, useMemo } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
-import { Sky, AdaptiveDpr, AdaptiveEvents } from '@react-three/drei'
+import { AdaptiveDpr, AdaptiveEvents } from '@react-three/drei'
 import * as THREE from 'three'
 import { gsap } from 'gsap'
 
 import LifeTree from './LifeTree'
 import OrbitingCoins from './OrbitingCoins'
+import CloudEnvironment from './CloudEnvironment'
 
 import { orbitState } from '../../data/orbitState'
+import useStore from '../../store/useStore'
 
 function Lighting() {
   return (
@@ -176,22 +178,153 @@ function Grass() {
   )
 }
 
+/* ─── Gradient sky background ───────────────────────────────────────── */
+const skyVert = `
+  varying vec2 vUv;
+  void main() {
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`
+const skyFrag = `
+  varying vec2 vUv;
+  void main() {
+    // Sundown palette (bottom → top)
+    vec3 bottom = vec3(0.98, 0.72, 0.28);  // deep amber/gold at ground
+    vec3 horiz  = vec3(0.96, 0.45, 0.20);  // burnt orange at horizon
+    vec3 mid    = vec3(0.75, 0.25, 0.28);  // deep crimson/rose mid-sky
+    vec3 top    = vec3(0.28, 0.12, 0.28);  // dark purple-plum at top
+
+    // Sun-side warm burst (upper right)
+    float sunWarmX = smoothstep(0.10, 0.85, vUv.x);
+    float sunWarmY = smoothstep(0.20, 0.85, vUv.y);
+    float sunWarm  = sunWarmX * sunWarmY * 0.60;
+
+    // Orange-gold horizon haze lower-right
+    float hazeX = smoothstep(0.0, 1.0, vUv.x);
+    float hazeY = smoothstep(0.55, 0.0, vUv.y);
+    float haze  = hazeX * hazeY;
+
+    // Vertical gradient
+    vec3 color;
+    float y = vUv.y;
+    if (y < 0.25) {
+      color = mix(bottom, horiz, y / 0.25);
+    } else if (y < 0.55) {
+      color = mix(horiz, mid, (y - 0.25) / 0.30);
+    } else {
+      color = mix(mid, top, (y - 0.55) / 0.45);
+    }
+
+    // Sun-side golden warmth
+    color = mix(color, vec3(1.0, 0.75, 0.20), sunWarm * 0.50);
+    // Horizon haze
+    color = mix(color, vec3(1.0, 0.55, 0.10), haze * 0.35);
+
+    gl_FragColor = vec4(color, 1.0);
+  }
+`
+function SceneBackground() {
+  return (
+    <mesh position={[0, 0, -50]} renderOrder={-20}>
+      <planeGeometry args={[200, 110]} />
+      <shaderMaterial
+        vertexShader={skyVert}
+        fragmentShader={skyFrag}
+        depthWrite={false}
+      />
+    </mesh>
+  )
+}
+
+/* ─── Sunburst — warm golden rays behind the scene ──────────────────── */
+const sunburstVert = `
+  varying vec2 vUv;
+  void main() {
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`
+const sunburstFrag = `
+  varying vec2 vUv;
+  uniform float uTime;
+
+  void main() {
+    vec2 sunUV = vec2(0.72, 0.72);
+    vec2 d = vUv - sunUV;
+    float dist = length(d);
+
+    // Wide atmospheric wash — very large, very soft
+    float atmosphere = smoothstep(0.90, 0.0, dist);
+    // Middle corona
+    float corona     = smoothstep(0.35, 0.0, dist);
+    // Inner halo ring
+    float halo       = smoothstep(0.14, 0.0, dist);
+    // Bright core
+    float core       = smoothstep(0.04, 0.0, dist);
+
+    vec3 atmosCol = vec3(1.0, 0.88, 0.55);
+    vec3 coronaCol= vec3(1.0, 0.78, 0.32);
+    vec3 haloCol  = vec3(1.0, 0.92, 0.60);
+    vec3 coreCol  = vec3(1.0, 0.98, 0.88);
+
+    vec3 color = atmosCol;
+    color = mix(color, coronaCol, clamp(corona, 0.0, 1.0));
+    color = mix(color, haloCol,   clamp(halo,   0.0, 1.0));
+    color = mix(color, coreCol,   clamp(core,   0.0, 1.0));
+
+    float alpha = clamp(
+      atmosphere * 0.18 +
+      corona     * 0.22 +
+      halo       * 0.28 +
+      core       * 0.45,
+      0.0, 0.55
+    );
+
+    gl_FragColor = vec4(color, alpha);
+  }
+`
+function SunBurst() {
+  const matRef = useRef()
+  useFrame(({ clock }) => {
+    if (matRef.current) matRef.current.uniforms.uTime.value = clock.elapsedTime
+  })
+  return (
+    <mesh position={[0, 0, -48]} renderOrder={-10}>
+      <planeGeometry args={[160, 90]} />
+      <shaderMaterial
+        ref={matRef}
+        vertexShader={sunburstVert}
+        fragmentShader={sunburstFrag}
+        uniforms={{ uTime: { value: 0 } }}
+        transparent
+        depthWrite={false}
+        blending={THREE.AdditiveBlending}
+      />
+    </mesh>
+  )
+}
+
 function SceneContents() {
   return (
     <>
       <Lighting />
-      <Sky sunPosition={[100, 20, 60]} turbidity={4} rayleigh={0.2} mieCoefficient={0.02} mieDirectionalG={0.9} />
+      <SceneBackground />
+      <SunBurst />
       <LifeTree />
       <OrbitingCoins />
-      <GroundPlane />
-      <Grass />
+      <CloudEnvironment />
     </>
   )
 }
 
 export default function Scene() {
   useEffect(() => {
+    const isModalOpen = () => useStore.getState().isModalOpen
+
     const handleWheel = (e) => {
+      // Let the modal (or any scrollable overlay) handle its own scroll
+      if (isModalOpen()) return
       e.preventDefault()
       const delta = e.deltaX !== 0 ? e.deltaX : e.deltaY
       gsap.to(orbitState, {
@@ -204,9 +337,11 @@ export default function Scene() {
 
     let touchStartX = 0
     const handleTouchStart = (e) => {
+      if (isModalOpen()) return
       touchStartX = e.touches[0].clientX
     }
     const handleTouchMove = (e) => {
+      if (isModalOpen()) return
       const dx = touchStartX - e.touches[0].clientX
       touchStartX = e.touches[0].clientX
       gsap.to(orbitState, {
@@ -230,7 +365,7 @@ export default function Scene() {
 
   return (
     <Canvas
-      camera={{ position: [0, 4, 13], fov: 52, near: 0.1, far: 100 }}
+      camera={{ position: [0, 1.5, 15], fov: 50, near: 0.1, far: 100 }}
       shadows
       style={{ position: 'absolute', inset: 0 }}
       gl={{
@@ -239,10 +374,10 @@ export default function Scene() {
         alpha: false,
       }}
       onCreated={({ gl, scene }) => {
-        gl.setClearColor(new THREE.Color('#e8d5b0'))
+        gl.setClearColor(new THREE.Color('#7a2020'))
         gl.toneMapping = THREE.ACESFilmicToneMapping
         gl.toneMappingExposure = 1.05
-        scene.background = new THREE.Color('#e8d5b0')
+        scene.background = new THREE.Color('#7a2020')
       }}
     >
       <AdaptiveDpr pixelated={false} />

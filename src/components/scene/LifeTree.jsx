@@ -4,6 +4,10 @@ import * as THREE from 'three'
 
 /* ─── Trunk segments: each is a tapered cylinder section ─────────────── */
 const TRUNK_SECTIONS = [
+  // Root extensions — extend below viewport so trunk appears to grow from under
+  { br: 1.05, tr: 0.85, h: 2.2, y: -4.2, rz: 0, rx: 0 },
+  { br: 0.85, tr: 0.65, h: 2.2, y: -2.0, rz: 0, rx: 0 },
+  // Main trunk
   { br: 0.65, tr: 0.52, h: 1.6, y: 0.0,  rz: 0, rx: 0 },
   { br: 0.52, tr: 0.42, h: 1.5, y: 1.55, rz: 0, rx: 0 },
   { br: 0.42, tr: 0.34, h: 1.4, y: 3.00, rz: 0, rx: 0 },
@@ -137,8 +141,6 @@ const FOLIAGE_CLUSTERS = [
 
 export default function LifeTree() {
   const rootRef = useRef()
-  const glowRingRef = useRef()
-  const crownRef = useRef()
 
   useFrame(({ clock }) => {
     const t = clock.elapsedTime
@@ -146,22 +148,11 @@ export default function LifeTree() {
       rootRef.current.rotation.z = Math.sin(t * 0.28) * 0.008
       rootRef.current.rotation.x = Math.sin(t * 0.19) * 0.005
     }
-    if (glowRingRef.current) {
-      glowRingRef.current.material.opacity = 0.06 + Math.sin(t * 0.7) * 0.03
-    }
-    if (crownRef.current) {
-      crownRef.current.rotation.y += 0.004
-      crownRef.current.scale.setScalar(1 + Math.sin(t * 1.2) * 0.03)
-    }
+
   })
 
   return (
-    <group ref={rootRef} position={[0, -2.1, 0]}>
-      {/* Ground glow */}
-      <mesh ref={glowRingRef} position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[5.5, 64]} />
-        <meshBasicMaterial color="#4ade80" transparent opacity={0.06} depthWrite={false} />
-      </mesh>
+    <group ref={rootRef} position={[0, -4.0, 0]}>
 
       {/* Multi-section trunk */}
       {TRUNK_SECTIONS.map((s, i) => (
@@ -187,18 +178,7 @@ export default function LifeTree() {
         <FoliageCluster key={i} position={f.pos} radius={f.r} density={f.d} color={f.c} wireColor={f.wc} />
       ))}
 
-      {/* Crown gem — energy node at top */}
-      <group ref={crownRef} position={[0, 10.0, 0]}>
-        <mesh>
-          <octahedronGeometry args={[0.32, 0]} />
-          <meshStandardMaterial color="#a3e635" emissive="#4ade80" emissiveIntensity={1.4} roughness={0.1} metalness={0.5} />
-        </mesh>
-        <mesh scale={[1.5, 1.5, 1.5]}>
-          <octahedronGeometry args={[0.32, 0]} />
-          <meshBasicMaterial color="#86efac" wireframe transparent opacity={0.4} />
-        </mesh>
-        <pointLight intensity={1.8} color="#86efac" distance={4} decay={2} />
-      </group>
+
     </group>
   )
 }

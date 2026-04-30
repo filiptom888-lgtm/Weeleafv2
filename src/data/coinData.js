@@ -1,6 +1,6 @@
 // Orbit geometry constants
 export const ORBIT_RADIUS = 5.2
-export const ORBIT_HEIGHT = 0.8
+export const ORBIT_HEIGHT = -0.2
 
 /**
  * Each coin has:
@@ -23,38 +23,48 @@ export const COINS = [
     emissiveColor: '#22c55e',
     angle: 0,
     content: {
-      title: 'WeeLeaf — The Core',
-      tagline: 'A Sustainable Community Movement',
+      title: 'WL — Et levende fællesskab',
+      tagline: 'For mennesker, idéer og bæredygtig fremtid',
       sections: [
         {
-          heading: '♾️ Our 5 Founding Principles',
+          heading: '🌿 Hvad er WL?',
+          text: 'WL er et åbent, voksende univers skabt til mennesker, der vil mere end bare følge med tiden — de vil forme den. Her mødes teknologi, natur, kreativitet og fællesskab i et rum, hvor alle kan bidrage, lære og bygge noget, der rækker længere end os selv.\n\nWL er ikke et brand i klassisk forstand. Det er en bevægelse. Et sted hvor idéer spirer, hvor mennesker hjælper hinanden frem, og hvor vi sammen udvikler løsninger, der gør hverdagen enklere, smukkere og mere bæredygtig.',
+        },
+        {
+          heading: '🌱 Hvad vi bygger',
           items: [
             {
-              name: 'Circularity',
-              desc: 'We design systems where every resource flows back into the cycle — zero waste by design.',
+              name: 'Fællesskab',
+              desc: 'Et fællesskab, hvor alle kan være med — uanset erfaring, baggrund eller faglighed.',
             },
             {
-              name: 'Sustainability',
-              desc: 'Long-term ecological and social well-being always takes priority over short-term gain.',
+              name: 'Digitalt økosystem',
+              desc: 'Et digitalt økosystem, hvor teknologi bruges til at styrke menneskelig kreativitet og samarbejde.',
             },
             {
-              name: 'Innovation',
-              desc: 'Technology and nature in harmony — from AI-driven homes to blockchain community tools.',
+              name: 'Bæredygtige produkter',
+              desc: 'Produkter og projekter, der tager udgangspunkt i naturens materialer og fremtidens behov.',
             },
             {
-              name: 'Community',
-              desc: 'Decisions are made collectively. Every member has a voice and a meaningful stake.',
-            },
-            {
-              name: 'Economic Responsibility',
-              desc: 'Transparent, ethical financial flows designed to benefit the many, not the few.',
+              name: 'Platform for læring',
+              desc: 'En platform, hvor du kan dele viden, finde sparring og skabe nye muligheder.',
             },
           ],
         },
         {
-          heading: '💰 The 20 / 10 / 30 Economic Model',
-          text:
-            'WL operates on a transparent profit-sharing model: 20% is reinvested into R&D and innovation; 10% is held in a community resilience reserve; 30% is distributed directly to active community members. The remaining 40% covers operational costs and sustainable growth infrastructure.',
+          heading: '🌍 Vores tilgang',
+          text: 'WL arbejder ud fra en enkel filosofi: Når mennesker får plads til at skabe, vokser både fællesskabet og verden omkring os. Derfor designer vi alt — fra kontrakter til digitale oplevelser — med fokus på:',
+          items: [
+            { name: 'Klarhed', desc: 'Gennemsigtighed i alt hvad vi gør.' },
+            { name: 'Tilgængelighed', desc: 'Åbent for alle, uanset udgangspunkt.' },
+            { name: 'Samarbejde', desc: 'Vi bygger bedre sammen.' },
+            { name: 'Langtidsholdbarhed', desc: 'Beslutninger der holder over tid.' },
+            { name: 'Ægte menneskelig værdi', desc: 'Mennesket i centrum — altid.' },
+          ],
+        },
+        {
+          heading: '🤝 Vær med til at forme WL',
+          text: 'WL er skabt til at blive bygget i fællesskab. Du kan deltage som skaber, udvikler, designer, nysgerrig nybegynder eller bare som dig selv. Det vigtigste er ikke, hvad du kan — men at du har lyst til at være med.\n\nWL er et sted, hvor alle bidrag tæller. Hvor idéer får lov at leve. Hvor vi sammen skaber noget, der gør en forskel.',
         },
       ],
     },
@@ -70,23 +80,30 @@ export const COINS = [
     angle: 51.43,
     content: {
       title: 'Hemptation',
-      tagline: "Nature's most versatile plant, refined.",
+      tagline: 'Hamp — en helt naturlig del',
       sections: [
         {
-          heading: '🌿 Wholesome Skincare',
-          text:
-            'Our "Wholesome" line is 100% natural, vegan, and powered by cold-pressed hemp seed oil. Rich in omega-3 and omega-6 fatty acids, our formulas deeply nourish skin without synthetic additives, parabens, or fillers. Pure earth. Zero compromise.',
+          heading: '🌿 Hvorfor hamp?',
+          text: 'Hamp lyder i manges øre som noget skidt og forbinder det med en ulovlig plante. I WL ser vi det som planetens eget bæredygtige valg til en grønnere omstilling. Vi ved at hamp er en af de mest effektive afgrøder i moderne landbrug.',
           items: [
-            { name: 'Hemp Seed Face Oil', desc: 'Balancing & nourishing for all skin types' },
-            { name: 'Body Butter', desc: 'Deep moisture with shea butter and hemp extract' },
-            { name: 'Lip Balm', desc: 'Natural SPF protection with hemp and beeswax' },
+            { name: 'Hurtig vækst', desc: 'Producerer store mængder biomasse på kort tid.' },
+            { name: 'Ingen pesticider', desc: 'Kræver ingen pesticider og er skånsom mod naturen.' },
+            { name: 'CO₂-optag', desc: 'Optager store mængder CO₂ under vækst.' },
+            { name: 'Jordforbedring', desc: 'Rødder skaber jordforbedring og øger biodiversitet.' },
+            { name: 'Alsidighed', desc: 'Kan bruges til emballering, hygiejne, byggematerialer, tekstiler, papir og meget mere.' },
           ],
         },
         {
-          heading: '🛏️ Harmony & Wellness Textiles',
-          text:
-            'Our OEKO-TEX® Standard 100 certified hemp bedding is the future of sustainable sleep. Hemp fabric is naturally thermoregulating, antimicrobial, and gets measurably softer with every wash — certified safe for humans and the planet.',
-          link: { text: 'Browse Hemp CPH Textiles', url: 'https://hempcph.com' },
+          heading: '🧴 Hemptation Wholesome — Pleje & Velvære',
+          text: 'Hemptation er en serie af moderne plejeprodukter, skabt med fokus på renhed, kvalitet og ansvarlighed. Udviklet til dig, der ønsker effektiv hud- og hårpleje uden unødvendige eller skadelige ingredienser — og med respekt for både kroppen og miljøet.\n\nAlle Hemptation-produkter er fri for parabener, sulfater, silikoner, kunstige farvestoffer og unødvendige tilsætningsstoffer. Kernen er hamp — rig på omega-3, omega-6, antioxidanter og vitaminer, der styrker hudens naturlige barriere og giver en sund, naturlig glød.\n\nProdukterne er 100 % veganske og ikke testet på dyr.',
+        },
+        {
+          heading: '🏷️ WL — Vores eget kvalitetsmærke',
+          text: 'På vores produkter vil du ikke se logoer du normalt forbinder med gode certificerede produkter. I WL er vores logo sit eget mærke på, at vi understøtter alle de andre certificeringer. Alle produkter støtter WLs nuværende certificeringer.\n\nDerfor er WL et mærke du kan stole på.',
+        },
+        {
+          heading: '🛏️ Hemptation Harmony & Wellness — Tekstiler',
+          text: 'Hampetekstiler repræsenterer en ny standard inden for bæredygtige og ansvarligt producerede tekstilprodukter. Fremstillet af 100 % naturlige hampfibre kombinerer disse produkter høj kvalitet, funktionalitet og miljøhensyn i én løsning.\n\nCertificeret med OEKO-TEX, BSCI, SEDEX og FCA. Hampens naturlige egenskaber gør vores tekstiler antibakterielle, allergivenlige og temperaturregulerende — du sover sundt og komfortabelt året rundt.\n\nVores hampprodukter er slidstærke, bliver blødere med tiden og er produceret under etisk forsvarlige forhold.',
         },
       ],
     },
@@ -102,27 +119,32 @@ export const COINS = [
     angle: 102.86,
     content: {
       title: 'WL Hive',
-      tagline: 'The home of the future, built today.',
+      tagline: 'Fremtidens bolig — bygget i dag',
       sections: [
         {
-          heading: '🏠 Self-Sufficient Living',
-          text:
-            'WL Hive is a modular, carbon-negative housing ecosystem. Each unit produces more energy than it consumes, manages its own water cycle through greywater reclamation, and can grow a portion of its own food via integrated aquaponics or vertical gardens.',
+          heading: '🏠 Hvad er WL Hive?',
+          text: 'WL Hive er en fremtidens boligmodel og smarthome baseret på selvforsyning, cirkulær økonomi, fællesskab og kunstig intelligens. Husene producerer energi, fødevarer og ressourcer lokalt og automatisk — og fungerer som en del af et nytænkende netværk af bæredygtige fællesskaber.',
         },
         {
-          heading: '🤖 Leafy — Your AI Home Intelligence',
-          text:
-            'Every WL Hive is powered by Leafy, our open-source AI assistant. Leafy manages energy distribution, monitors air quality in real time, optimizes resource consumption, and connects each home to the wider WL community network.',
+          heading: '⚡ Selvforsyning & Energi',
+          items: [
+            { name: 'Solenergi', desc: 'Integrerede solpaneler producerer mere energi end boligen forbruger.' },
+            { name: 'Energilagring', desc: 'Lokale batterisystemer sikrer forsyning dag og nat, uanset vejret.' },
+            { name: 'Vandhåndtering', desc: 'Genbrug af gråvand og regnvandsopsamling minimerer vandforbrug.' },
+            { name: 'Fødevareproduktion', desc: 'Integrerede vertikale haver og akvaponik giver mad direkte fra hjemmet.' },
+          ],
         },
         {
-          heading: '🛡️ NBC Safety Architecture',
-          text:
-            'WL Hive incorporates Nuclear, Biological, and Chemical resilience protocols — sealed positive-pressure ventilation with HEPA + activated carbon filtration, automated lockdown systems, and 30-day emergency supply reserves for genuine self-reliance.',
+          heading: '🤖 Leafy — Din AI-assistent',
+          text: 'Hvert WL Hive drives af Leafy, vores open-source AI-assistent. Leafy styrer energifordeling, overvåger luftkvalitet i realtid, optimerer ressourceforbrug og forbinder boligen til det bredere WL-fællesskabsnetværk. Jo mere Leafy lærer om dig, jo bedre tilpasser den sig dit liv.',
         },
         {
-          heading: '🌱 Carbon-Negative Construction',
-          text:
-            'Built with hempcrete, recycled steel, and reclaimed timber. The hemp grown for construction sequesters more CO₂ during its growth cycle than is emitted across the entire build process — making each Hive a net carbon sink.',
+          heading: '🌱 Bæredygtige byggematerialer',
+          text: 'WL Hive er bygget med hampbeton, genanvendt stål og genbrugt træ. Hampen, der anvendes i byggeriet, optager mere CO₂ under sin vækst end der udledes i hele byggeprocessen — hvilket gør hvert Hive til et netto CO₂-lager.',
+        },
+        {
+          heading: '🔗 Del af et større netværk',
+          text: 'WL Hive er ikke bare én bolig — det er en node i et levende netværk. Hiver deler overskudsenergi, ressourcer og viden med hinanden. Fællesskabet styrker den enkelte, og den enkelte styrker fællesskabet. Cirkulær økonomi i praksis, i hverdagen.',
         },
       ],
     },
@@ -137,38 +159,12 @@ export const COINS = [
     emissiveColor: '#3b82f6',
     angle: 154.29,
     content: {
-      title: 'The Collective Shop',
-      tagline: 'Buy together. Waste nothing.',
+      title: 'WL Shop',
+      tagline: 'Når du handler gennem WL, skaber du værdi for både dig selv og fællesskabet. Samtidig støtter du udviklingen af nye bæredygtige løsninger.',
       sections: [
         {
-          heading: '🤝 Collective Buying Power',
-          text:
-            'The WL Shop operates on a community purchasing model. Orders are pooled to reach Minimum Order Quantities (MOQ), drastically cutting overproduction. Every item manufactured is already wanted — no guesswork, no surplus.',
-        },
-        {
-          heading: '📦 How MOQ Logic Works',
-          text:
-            "Products are listed with a target quantity pledge threshold. Community members commit their order. When MOQ is reached, production begins. If the threshold isn't met within the pledge window, all commitments are released — zero waste, zero obligation.",
-        },
-        {
-          heading: '🌿 Featured: Hemp CPH Textiles',
-          items: [
-            {
-              name: 'Hemp Duvet Cover Set',
-              desc: 'OEKO-TEX® certified, naturally cooling, hypoallergenic',
-              link: 'https://hempcph.com',
-            },
-            {
-              name: 'Hemp Pillowcases (2-pack)',
-              desc: 'Antimicrobial, gets softer with every wash',
-              link: 'https://hempcph.com',
-            },
-            {
-              name: 'Hemp Bath Towels',
-              desc: 'Quick-dry, ultra-absorbent, planet-safe',
-              link: 'https://hempcph.com',
-            },
-          ],
+          heading: '💚 Fordele ved WL',
+          text: "WL's økonomiske model giver op til 30% samlet værdi gennem fællesskabet. 20% er direkte besparelse for medlemmerne, og 10% investeres i nye projekter. Det skaber en økonomi, hvor fællesskabet vokser sammen.",
         },
       ],
     },
@@ -227,36 +223,34 @@ export const COINS = [
     emissiveColor: '#ec4899',
     angle: 257.14,
     content: {
-      title: 'Support WeeLeaf',
-      tagline: 'One Krone. Infinite ripple.',
+      title: 'Støt WL',
+      tagline: 'Én krone. Uendelige ringe i vandet.',
       sections: [
         {
-          heading: '💚 Show Your Interest',
-          text:
-            'A symbolic donation of just 1 Danish Krone (DKK) is all it takes to signal belief in the WeeLeaf vision. This is not about funding — it is about counting the people who care. Every pledge is a vote for a better world, recorded permanently.',
+          heading: '💚 Vis din opbakning',
+          text: 'En symbolsk donation på blot 1 dansk krone er alt, hvad der skal til for at vise, at du tror på WL-visionen. Det handler ikke om penge — det handler om at tælle de mennesker, der vil med. Hvert bidrag er en stemme for en bedre verden.',
         },
         {
-          heading: '🌱 What Your Support Signals',
+          heading: '🌱 Hvad din støtte betyder',
           items: [
             {
-              name: 'Community Validation',
-              desc: 'Demonstrates to partners and investors that real people stand behind this movement',
+              name: 'Fællesskabets stemme',
+              desc: 'Viser partnere og samarbejdspartnere, at rigtige mennesker står bag bevægelsen.',
             },
             {
-              name: 'Development Priority',
-              desc: 'Your pledge helps us prioritise which features and products to build next',
+              name: 'Retning for udviklingen',
+              desc: 'Din opbakning hjælper os med at prioritere, hvilke produkter og funktioner vi bygger næst.',
             },
             {
-              name: 'Founding Membership',
-              desc: "You'll be recorded as an early supporter in the WL founding archive",
+              name: 'Grundlæggermedlemskab',
+              desc: 'Du registreres som en af de første støtter i WLs grundlæggerarkiv.',
             },
           ],
         },
         {
-          heading: '💳 Register Your 1 Krone Pledge',
-          text:
-            'Payment integration is coming soon. In the meantime, reach out directly to register your symbolic support and get added to our founding community list.',
-          cta: { text: 'Register Interest →', email: 'wl@weeleaf.com' },
+          heading: '💳 Tilmeld din støtte',
+          text: 'Betalingsintegration er på vej. Skriv til os i mellemtiden for at registrere din symbolske støtte og blive en del af grundlæggerlisten.',
+          cta: { text: 'Skriv til os →', email: 'wl@weeleaf.com' },
         },
       ],
     },
@@ -271,44 +265,8 @@ export const COINS = [
     emissiveColor: '#10b981',
     angle: 308.57,
     content: {
-      title: 'Build WeeLeaf Together',
-      tagline: 'Every expert. Every creative. Every dreamer.',
-      sections: [
-        {
-          heading: "🛠️ Who We're Looking For",
-          items: [
-            { name: 'Frontend Developers', desc: 'React, Three.js, creative web & interactive experiences' },
-            {
-              name: 'Backend Engineers',
-              desc: 'Node.js, Python, API design, data pipelines & infrastructure',
-            },
-            { name: 'UX/UI Designers', desc: 'Systems thinking merged with beautiful, human interfaces' },
-            {
-              name: 'Content Creators',
-              desc: 'Writers, videographers, illustrators, photographers',
-            },
-            {
-              name: 'Sustainability Experts',
-              desc: 'Circular economy, permaculture, green building, regenerative agriculture',
-            },
-            {
-              name: 'Community Builders',
-              desc: 'Event organisers, connectors, educators, advocates',
-            },
-          ],
-        },
-        {
-          heading: '🌿 How Contribution Works',
-          text:
-            'WL runs on community contribution. Members who help build the platform earn WL tokens — redeemable for products, services, and growing community benefits. Your skills are your stake in the movement.',
-        },
-        {
-          heading: '✉️ Get Involved',
-          text:
-            'Send us a message with who you are and what you bring. We are building something real, and we want you at the table from the beginning.',
-          cta: { text: 'Email the Team', email: 'wl@weeleaf.com' },
-        },
-      ],
+      title: 'WL Community',
+      tagline: 'Et digitalt fællesskab for mennesker, der vil udvikle bæredygtige idéer.',
     },
   },
 ]

@@ -189,11 +189,11 @@ const skyVert = `
 const skyFrag = `
   varying vec2 vUv;
   void main() {
-    // Sundown palette (bottom → top)
-    vec3 bottom = vec3(0.98, 0.72, 0.28);  // deep amber/gold at ground
-    vec3 horiz  = vec3(0.96, 0.45, 0.20);  // burnt orange at horizon
-    vec3 mid    = vec3(0.75, 0.25, 0.28);  // deep crimson/rose mid-sky
-    vec3 top    = vec3(0.28, 0.12, 0.28);  // dark purple-plum at top
+    // Sundown palette — earthy brown/amber tones
+    vec3 bottom = vec3(0.78, 0.58, 0.32);  // warm caramel/brown at ground
+    vec3 horiz  = vec3(0.72, 0.48, 0.28);  // toasted amber at horizon
+    vec3 mid    = vec3(0.52, 0.32, 0.22);  // deep mocha mid-sky
+    vec3 top    = vec3(0.22, 0.16, 0.20);  // dark warm charcoal at top
 
     // Sun-side warm burst (upper right)
     float sunWarmX = smoothstep(0.10, 0.85, vUv.x);
@@ -216,10 +216,10 @@ const skyFrag = `
       color = mix(mid, top, (y - 0.55) / 0.45);
     }
 
-    // Sun-side golden warmth
-    color = mix(color, vec3(1.0, 0.75, 0.20), sunWarm * 0.50);
+    // Sun-side warm burst (upper right)
+    color = mix(color, vec3(0.95, 0.72, 0.32), sunWarm * 0.40);
     // Horizon haze
-    color = mix(color, vec3(1.0, 0.55, 0.10), haze * 0.35);
+    color = mix(color, vec3(0.88, 0.55, 0.22), haze * 0.28);
 
     gl_FragColor = vec4(color, 1.0);
   }
@@ -374,10 +374,10 @@ export default function Scene() {
         alpha: false,
       }}
       onCreated={({ gl, scene }) => {
-        gl.setClearColor(new THREE.Color('#7a2020'))
+        gl.setClearColor(new THREE.Color('#3a2214'))
         gl.toneMapping = THREE.ACESFilmicToneMapping
         gl.toneMappingExposure = 1.05
-        scene.background = new THREE.Color('#7a2020')
+        scene.background = new THREE.Color('#3a2214')
       }}
     >
       <AdaptiveDpr pixelated={false} />

@@ -869,7 +869,23 @@ export default function AdminPanel() {
           </div>
           <div className="flex items-center gap-1">
             {authed && (
-              <button onClick={logout} className="text-white/20 hover:text-white/50 text-xs px-2 py-1 rounded-lg transition-colors" title="Log ud">🔒</button>
+              <>
+                <button
+                  onClick={() => {
+                    const { coins, shopCategories, blogPosts, donationConfig } = useStore.getState()
+                    const config = { coins, shopCategories, blogPosts, donationConfig }
+                    const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' })
+                    const a = document.createElement('a')
+                    a.href = URL.createObjectURL(blob)
+                    a.download = 'wl-config.json'
+                    a.click()
+                    URL.revokeObjectURL(a.href)
+                  }}
+                  className="text-white/20 hover:text-green-400 text-xs px-2 py-1 rounded-lg transition-colors"
+                  title="Eksporter config (erstat public/wl-config.json og push)"
+                >📤</button>
+                <button onClick={logout} className="text-white/20 hover:text-white/50 text-xs px-2 py-1 rounded-lg transition-colors" title="Log ud">🔒</button>
+              </>
             )}
             <button onClick={toggleAdmin} className="w-8 h-8 rounded-full flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-all text-xl leading-none">×</button>
           </div>

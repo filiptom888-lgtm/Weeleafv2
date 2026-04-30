@@ -1,4 +1,5 @@
-import React, { Suspense } from 'react'
+import React, { Suspense, useEffect } from 'react'
+import useStore from './store/useStore'
 import Scene from './components/scene/Scene'
 import Modal from './components/ui/Modal'
 import LeafyAssistant from './components/ui/LeafyAssistant'
@@ -47,6 +48,15 @@ function LoadingScreen() {
 }
 
 export default function App() {
+  useEffect(() => {
+    // Fetch published config from /wl-config.json — this is the shared source of truth.
+    // Admin exports and pushes this file to update all users.
+    fetch('/wl-config.json?v=' + Date.now())
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => { if (data && Object.keys(data).length > 0) useStore.getState().applyRemoteConfig(data) })
+      .catch(() => {})
+  }, [])
+
   return (
     <div className="relative w-screen h-screen overflow-hidden select-none">
       {/* 3-D Scene */}

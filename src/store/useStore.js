@@ -193,6 +193,27 @@ const useStore = create((set, get) => ({
     saveDonation(DEFAULT_DONATION_CONFIG)
     set({ donationConfig: DEFAULT_DONATION_CONFIG })
   },
+
+  // Apply a full config snapshot fetched from /wl-config.json
+  // This is the "source of truth" for all users — overrides localStorage
+  applyRemoteConfig: (data) => {
+    if (data.coins && Array.isArray(data.coins) && data.coins.length > 0) {
+      saveCoins(data.coins)
+      set({ coins: data.coins })
+    }
+    if (data.shopCategories && Array.isArray(data.shopCategories)) {
+      saveShop(data.shopCategories)
+      set({ shopCategories: data.shopCategories })
+    }
+    if (data.blogPosts && Array.isArray(data.blogPosts)) {
+      saveBlog(data.blogPosts)
+      set({ blogPosts: data.blogPosts })
+    }
+    if (data.donationConfig && typeof data.donationConfig === 'object') {
+      saveDonation(data.donationConfig)
+      set({ donationConfig: data.donationConfig })
+    }
+  },
 }))
 
 export default useStore

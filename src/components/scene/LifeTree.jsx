@@ -73,12 +73,12 @@ const BRANCHES = [
  * Each tier is rotated ~67° in azimuth from the tier above/below
  * so they never visually stack.
  */
-/*
- * Mid-trunk branches — 4 tiers covering local y=2 to y=5.4
- * (base branches + fork already cover y=0–1.5)
- * Each tier offset ~60° in azimuth from adjacent tiers.
- */
 const MID_BRANCHES = [
+  // ── Tier A: local y≈1.0–1.3 — angled low branches ───────────────
+  { az: Math.PI*0.17,  ay: 1.0, len: 3.2, thick: 0.18, droop: 1.30, lr: 0.62, lc: '#1a4c2e', lwc: '#38845a' },
+  { az: Math.PI*0.83,  ay: 1.2, len: 3.0, thick: 0.16, droop: 1.20, lr: 0.58, lc: '#1b4e30', lwc: '#3a865c' },
+  { az: Math.PI*1.50,  ay: 1.1, len: 3.1, thick: 0.17, droop: 1.25, lr: 0.60, lc: '#1c5032', lwc: '#3c885e' },
+
   // ── Tier B: local y≈2.0 ─────────────────────────────────────────
   { az: Math.PI*0.25,  ay: 2.0, len: 2.8, thick: 0.14, droop: 0, lr: 0.56, lc: '#1e5232', lwc: '#3c8e62' },
   { az: Math.PI*1.25,  ay: 2.1, len: 2.6, thick: 0.13, droop: 0, lr: 0.53, lc: '#205434', lwc: '#3e9064' },
@@ -133,14 +133,6 @@ function Branch({ az, ay, len, thick, droop, lr = 0, lc = '#2d7a4f', lwc = '#52b
     </group>
   )
 }
-
-/* ─── Base branches: 4 big low sprawlers, graduated sizes ─────────── */
-const BASE_BRANCHES = [
-  { az: Math.PI*0.00, ay: 0.4, len: 4.6, thick: 0.24, droop: 0, lr: 0.78, lc: '#163d22', lwc: '#30724c' },
-  { az: Math.PI*0.50, ay: 0.6, len: 4.2, thick: 0.22, droop: 0, lr: 0.72, lc: '#173f24', lwc: '#32764e' },
-  { az: Math.PI*1.00, ay: 0.5, len: 4.4, thick: 0.23, droop: 0, lr: 0.75, lc: '#153b20', lwc: '#2e704a' },
-  { az: Math.PI*1.50, ay: 0.7, len: 4.0, thick: 0.21, droop: 0, lr: 0.70, lc: '#163e22', lwc: '#30744c' },
-]
 
 /* ─── Bottom fork: trunk dramatically splits near visible base ────────── */
 function BottomFork() {
@@ -251,11 +243,6 @@ export default function LifeTree() {
 
       {/* Bottom fork — dramatic 3-way split at trunk base */}
       <BottomFork />
-
-      {/* Huge base branches — fill the wide lower trunk area */}
-      {BASE_BRANCHES.map((b, i) => (
-        <Branch key={`base-${i}`} {...b} />
-      ))}
 
       {/* Mid-trunk branches */}
       {MID_BRANCHES.map((b, i) => (

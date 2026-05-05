@@ -1,6 +1,6 @@
 // Orbit geometry constants
 export const ORBIT_RADIUS = 5.2
-export const ORBIT_HEIGHT = -0.2
+export const ORBIT_HEIGHT = -0.9
 
 /**
  * Each coin has:

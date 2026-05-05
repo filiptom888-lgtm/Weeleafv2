@@ -34,44 +34,44 @@ function CloudPuff({ position, scale = 1, opacity = 0.15, driftX = 0, driftZ = 0
   const planes = useMemo(() => {
     const seed = phase
     const rng = (n, min, max) => min + (Math.sin(seed * 13.7 + n * 97.3) * 0.5 + 0.5) * (max - min)
-    return Array.from({ length: 11 }, (_, i) => ({
-      x: rng(i,     -1.8, 1.8),
-      y: rng(i + 1, -0.2, 0.3),   // very little vertical spread
-      z: rng(i + 2, -1.8, 1.8),
-      s: rng(i + 3,  0.8, 1.6),
-      yaw: rng(i + 4, 0, Math.PI * 2),
-      tilt: rng(i + 5, -0.18, 0.18), // slight tilt off horizontal
-      oMult: rng(i + 6, 0.55, 1.0),
+    return Array.from({ length: 14 }, (_, i) => ({
+      x: rng(i,     -1.6, 1.6),
+      y: rng(i + 1, -0.7, 0.7),   // wide vertical spread so no flat edge
+      z: rng(i + 2, -1.6, 1.6),
+      s: rng(i + 3,  0.7, 1.5),
+      // Fully random orientation — mix of horizontal, vertical, and angled planes
+      rx: rng(i + 4, -Math.PI,      Math.PI),
+      ry: rng(i + 5,  0,            Math.PI * 2),
+      rz: rng(i + 6, -Math.PI * 0.5, Math.PI * 0.5),
+      oMult: rng(i + 7, 0.45, 0.95),
     }))
   }, [phase])
 
   useFrame(({ clock }) => {
     if (!groupRef.current) return
     const t = clock.elapsedTime
-    // Faster lateral drift + gentle secondary wobble for organic feel
     groupRef.current.position.x = position[0]
       + Math.sin(t * 0.13 + phase) * driftX
       + Math.sin(t * 0.07 + phase * 1.3) * driftX * 0.35
     groupRef.current.position.z = position[2]
       + Math.cos(t * 0.11 + phase) * driftZ
       + Math.cos(t * 0.05 + phase * 0.8) * driftZ * 0.4
-    // More noticeable vertical breathing
     groupRef.current.position.y = position[1] + Math.sin(t * 0.18 + phase) * 0.22
   })
 
   return (
-    <group ref={groupRef} position={position} scale={[scale, scale * 0.42, scale]}>
+    <group ref={groupRef} position={position} scale={[scale, scale * 0.55, scale]}>
       {planes.map((p, i) => (
         <mesh
           key={i}
           position={[p.x, p.y, p.z]}
-          rotation={[-Math.PI / 2 + p.tilt, 0, p.yaw]}
+          rotation={[p.rx, p.ry, p.rz]}
         >
           <planeGeometry args={[p.s * 5.5, p.s * 5.5]} />
           <meshBasicMaterial
             map={texture}
             transparent
-            opacity={opacity * p.oMult * 1.55}
+            opacity={opacity * p.oMult * 1.4}
             depthWrite={false}
             blending={THREE.NormalBlending}
             side={THREE.DoubleSide}

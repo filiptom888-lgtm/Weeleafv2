@@ -8,7 +8,7 @@ import useStore from '../../store/useStore'
 import { orbitState } from '../../data/orbitState'
 import { ORBIT_RADIUS, ORBIT_HEIGHT } from '../../data/coinData'
 
-const COIN_RADIUS = 0.68
+const COIN_RADIUS = 0.98
 
 // Active coin floats in front of camera at this world position
 const ACTIVE_POS = new THREE.Vector3(0, 1.2, 6.5)

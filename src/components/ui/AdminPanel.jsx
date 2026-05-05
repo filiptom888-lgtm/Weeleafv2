@@ -719,6 +719,75 @@ function BlogAdmin() {
     </div>
   )
 }
+/* ─── Stats admin ───────────────────────────────────────────────────── */
+function StatsAdmin() {
+  const { stats, updateStats, resetStats } = useStore()
+  const [local, setLocal] = useState(stats)
+
+  const inputCls = 'w-full text-sm rounded-lg px-3 py-2 text-white/85 placeholder-white/25 outline-none border bg-white/5 border-white/10 focus:border-yellow-400/40 transition-colors'
+  const labelCls = 'block text-xs text-white/40 mb-1'
+
+  const handleChange = (id, field, val) => {
+    setLocal((prev) => prev.map((s) => s.id === id ? { ...s, [field]: val } : s))
+  }
+
+  const addStat = () => {
+    const newStat = { id: `stat_${Date.now()}`, label: 'Ny tæller', value: 0, suffix: '' }
+    setLocal((prev) => [...prev, newStat])
+  }
+
+  const removeStat = (id) => {
+    setLocal((prev) => prev.filter((s) => s.id !== id))
+  }
+
+  const save = () => {
+    const parsed = local.map((s) => ({ ...s, value: Number(s.value) || 0 }))
+    updateStats(parsed)
+  }
+
+  const reset = () => {
+    resetStats()
+    setLocal(useStore.getState().stats)
+  }
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-white/30">Vises som en tæller-bar i bunden af skærmen (synlig for alle besøgende).</p>
+      <div className="space-y-3">
+        {local.map((stat) => (
+          <div key={stat.id} className="rounded-xl p-3 space-y-2" style={{ background: 'rgba(255,200,80,0.06)', border: '1px solid rgba(255,200,80,0.12)' }}>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-semibold" style={{ color: '#f0c070' }}>{stat.label || 'Tæller'}</span>
+              <button onClick={() => removeStat(stat.id)} className="text-white/20 hover:text-red-400 text-sm transition-colors">×</button>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="col-span-2">
+                <label className={labelCls}>Label</label>
+                <input className={inputCls} value={stat.label} onChange={(e) => handleChange(stat.id, 'label', e.target.value)} placeholder="Medlemmer" />
+              </div>
+              <div>
+                <label className={labelCls}>Suffix</label>
+                <input className={inputCls} value={stat.suffix} onChange={(e) => handleChange(stat.id, 'suffix', e.target.value)} placeholder="kg" />
+              </div>
+            </div>
+            <div>
+              <label className={labelCls}>Tal</label>
+              <input type="number" className={inputCls} value={stat.value} onChange={(e) => handleChange(stat.id, 'value', e.target.value)} placeholder="0" />
+            </div>
+          </div>
+        ))}
+      </div>
+      <button onClick={addStat} className="w-full py-2 rounded-xl text-xs font-semibold transition-all" style={{ background: 'rgba(255,200,80,0.08)', border: '1px solid rgba(255,200,80,0.2)', color: '#f0c070' }}>
+        + Tilføj tæller
+      </button>
+      <button onClick={save} className="w-full py-2 rounded-xl text-xs font-semibold text-white/90 transition-all" style={{ background: 'rgba(74,222,128,0.15)', border: '1px solid rgba(74,222,128,0.3)' }}>
+        💾 Gem tæller
+      </button>
+      <button onClick={reset} className="w-full py-2 rounded-xl text-xs text-white/30 hover:text-white/60 transition-colors">↺ Nulstil tæller</button>
+    </div>
+  )
+}
+
 /* ─── Donation admin ────────────────────────────────────────────────── */
 function DonationAdmin() {
   const { donationConfig, setDonationConfig, resetDonationConfig } = useStore()
@@ -1014,7 +1083,7 @@ export default function AdminPanel() {
 
         {/* Tab switcher */}
         {authed && <div className="flex gap-1 px-4 pt-3 pb-1">
-          {[{ key: 'coins', label: '🌿 Nodes' }, { key: 'shop', label: '🛍️ Shop' }, { key: 'blog', label: '📝 Blog' }, { key: 'donation', label: '💳 Give' }, { key: 'publish', label: '🚀 Publicér' }].map(({ key, label }) => (
+          {[{ key: 'coins', label: '🌿 Nodes' }, { key: 'shop', label: '🛍️ Shop' }, { key: 'blog', label: '📝 Blog' }, { key: 'donation', label: '💳 Give' }, { key: 'stats', label: '📊 Tæller' }, { key: 'publish', label: '🚀 Publicér' }].map(({ key, label }) => (
             <button
               key={key}
               onClick={() => { setActiveTab(key); setEditingId(null) }}
@@ -1034,6 +1103,9 @@ export default function AdminPanel() {
 
           {/* Blog tab */}
           {activeTab === 'blog' && <BlogAdmin />}
+
+          {/* Stats tab */}
+          {activeTab === 'stats' && <StatsAdmin />}
 
           {/* Donation tab */}
           {activeTab === 'donation' && <DonationAdmin />}

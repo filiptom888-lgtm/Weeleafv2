@@ -8,6 +8,23 @@ const STORAGE_KEY = 'wl_admin_coins'
 const SHOP_KEY = 'wl_admin_shop'
 const BLOG_KEY = 'wl_admin_blog'
 const DONATION_KEY = 'wl_admin_donation'
+const STATS_KEY = 'wl_admin_stats'
+
+const DEFAULT_STATS = [
+  { id: 'members',   label: 'Medlemmer',     value: 0,   suffix: '' },
+  { id: 'co2',       label: 'Kg CO₂ sparet', value: 0,   suffix: 'kg' },
+  { id: 'donations', label: 'Donationer',    value: 0,   suffix: 'kr' },
+]
+function loadStats() {
+  try {
+    const raw = localStorage.getItem(STATS_KEY)
+    if (raw) return JSON.parse(raw)
+  } catch (_) {}
+  return DEFAULT_STATS
+}
+function saveStats(stats) {
+  try { localStorage.setItem(STATS_KEY, JSON.stringify(stats)) } catch (_) {}
+}
 
 const DEFAULT_DONATION_CONFIG = { mobilepay: '', link: '', qrImageUrl: '' }
 function loadDonation() {
@@ -77,6 +94,9 @@ const useStore = create((set, get) => ({
 
   // Donation config
   donationConfig: loadDonation(),
+
+  // Stats counters
+  stats: loadStats(),
 
   setActiveCoin: (coin) =>
     set({ activeCoin: coin, isModalOpen: coin !== null }),
@@ -194,6 +214,23 @@ const useStore = create((set, get) => ({
     set({ donationConfig: DEFAULT_DONATION_CONFIG })
   },
 
+  // Stats actions
+  updateStats: (patch) => {
+    // patch can be array (full replace) or object {id, ...fields}
+    if (Array.isArray(patch)) {
+      saveStats(patch)
+      set({ stats: patch })
+    } else {
+      const updated = get().stats.map((s) => s.id === patch.id ? { ...s, ...patch } : s)
+      saveStats(updated)
+      set({ stats: updated })
+    }
+  },
+  resetStats: () => {
+    saveStats(DEFAULT_STATS)
+    set({ stats: DEFAULT_STATS })
+  },
+
   // Apply a full config snapshot fetched from /wl-config.json
   // This is the "source of truth" for all users — overrides localStorage
   applyRemoteConfig: (data) => {
@@ -212,6 +249,10 @@ const useStore = create((set, get) => ({
     if (data.donationConfig && typeof data.donationConfig === 'object') {
       saveDonation(data.donationConfig)
       set({ donationConfig: data.donationConfig })
+    }
+    if (data.stats && Array.isArray(data.stats) && data.stats.length > 0) {
+      saveStats(data.stats)
+      set({ stats: data.stats })
     }
   },
 }))

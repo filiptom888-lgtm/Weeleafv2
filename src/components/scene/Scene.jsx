@@ -305,12 +305,168 @@ function SunBurst() {
   )
 }
 
+/* ─── Low-poly 3D mountains (matches tree's flatShading + wireframe) ─── */
+function buildMountainGeo(seed, cols, rows, width, maxPeak, jitterScale, zDepth) {
+  // Seeded deterministic noise
+  function noise(x) {
+    const i = Math.floor(x)
+    const f = x - i
+    const u = f * f * (3 - 2 * f)
+    const va = Math.abs(Math.sin((i      + seed) * 127.1 + 311.7) * 43758.5453) % 1
+    const vb = Math.abs(Math.sin((i + 1  + seed) * 127.1 + 311.7) * 43758.5453) % 1
+    return va + (vb - va) * u
+  }
+
+  // Jagged ridge profile: 0..1 for x in 0..1
+  function profile(x) {
+    let h = 0
+    h += 0.42 * (1 - Math.abs(2 * noise(x * 2.1) - 1))
+    h += 0.26 * (1 - Math.abs(2 * noise(x * 4.5) - 1))
+    h += 0.16 * (1 - Math.abs(2 * noise(x * 9.3) - 1))
+    h += 0.10 * noise(x * 18.7)
+    h += 0.06 * noise(x * 36.1)
+    return Math.min(Math.max(h, 0), 1)
+  }
+
+  function rng(n) { return Math.abs(Math.sin(n * 73.1 + seed * 31.7) * 43758.5453) % 1 }
+
+  // Build grid vertices
+  const gx = [], gy = [], gz = []
+  for (let row = 0; row <= rows; row++) {
+    for (let col = 0; col <= cols; col++) {
+      const t   = col / cols
+      const x   = (t - 0.5) * width
+      const frac = row / rows
+      const peakH = profile(t) * maxPeak
+      const y   = frac * peakH
+
+      const jAmt = jitterScale * Math.sin(frac * Math.PI)
+      const idx  = col * 1000 + row
+      const jx = (rng(idx * 1.0) - 0.5) * jAmt * 5
+      const jy = (rng(idx * 2.3) - 0.5) * jAmt * 1.4
+      const jz = (rng(idx * 3.7) - 0.5) * jAmt * zDepth
+
+      gx.push(x  + (row > 0 ? jx : 0))
+      gy.push(y  + (row > 0 ? jy : 0))
+      gz.push(row > 0 ? jz : 0)
+    }
+  }
+
+  // Build non-indexed triangles for flat shading
+  const positions = [], colors = []
+  const stride = cols + 1
+
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const i00 = row * stride + col
+      const i10 = i00 + 1
+      const i01 = (row + 1) * stride + col
+      const i11 = i01 + 1
+
+      for (const [a, b, c] of [[i00, i10, i01], [i10, i11, i01]]) {
+        const avgY = (gy[a] + gy[b] + gy[c]) / 3
+        const relH = avgY / maxPeak  // 0..1
+
+        let r, g, bl
+        if (relH > 0.82) {
+          // Snow — pure white
+          const t = (relH - 0.82) / 0.18
+          r = 0.72 + t * 0.28; g = 0.74 + t * 0.26; bl = 0.76 + t * 0.24
+        } else if (relH > 0.60) {
+          // Light grey upper slope
+          const t = (relH - 0.60) / 0.22
+          r = 0.50 + t * 0.22; g = 0.52 + t * 0.22; bl = 0.54 + t * 0.22
+        } else if (relH > 0.35) {
+          // Mid grey
+          const t = (relH - 0.35) / 0.25
+          r = 0.34 + t * 0.16; g = 0.34 + t * 0.18; bl = 0.36 + t * 0.18
+        } else {
+          // Dark grey / charcoal base
+          const t = relH / 0.35
+          r = 0.14 + t * 0.20; g = 0.14 + t * 0.20; bl = 0.15 + t * 0.21
+        }
+
+        for (const vi of [a, b, c]) {
+          positions.push(gx[vi], gy[vi], gz[vi])
+          colors.push(r, g, bl)
+        }
+      }
+    }
+  }
+
+  const geo = new THREE.BufferGeometry()
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
+  geo.setAttribute('color',    new THREE.Float32BufferAttribute(colors, 3))
+  geo.computeVertexNormals()
+  return geo
+}
+
+function MountainRange({ posY, posZ, seed, cols, rows, width, maxPeak, jitter, zDepth, wireOpacity }) {
+  const geo = useMemo(
+    () => buildMountainGeo(seed, cols, rows, width, maxPeak, jitter, zDepth),
+    [seed, cols, rows, width, maxPeak, jitter, zDepth]
+  )
+  return (
+    <group position={[0, posY, posZ]}>
+      {/* Solid faceted mountain */}
+      <mesh geometry={geo}>
+        <meshStandardMaterial
+          vertexColors
+          flatShading
+          roughness={0.88}
+          metalness={0.04}
+        />
+      </mesh>
+      {/* Wireframe overlay — same style as tree */}
+      <mesh geometry={geo}>
+        <meshBasicMaterial color="#1a1a2a" wireframe transparent opacity={wireOpacity} />
+      </mesh>
+    </group>
+  )
+}
+
+function Mountains() {
+  return (
+    <>
+      {/* Base-fill skirt — dark plane in front of mountains that hides the gap
+          where the mountain base meets the background sky */}
+      <mesh position={[0, -55, -33]}>
+        <planeGeometry args={[500, 40]} />
+        <meshStandardMaterial color="#1a1a1e" roughness={1} metalness={0} />
+      </mesh>
+
+      {/* Far misty range — softer, rolled peaks, lighter */}
+      <MountainRange
+        posY={-50} posZ={-50}
+        seed={5.0} cols={44} rows={12} width={240}
+        maxPeak={62} jitter={1.2} zDepth={3}
+        wireOpacity={0.06}
+      />
+      {/* Main dramatic range — sits right at the horizon split */}
+      <MountainRange
+        posY={-50} posZ={-44}
+        seed={1.0} cols={52} rows={14} width={220}
+        maxPeak={70} jitter={1.6} zDepth={5}
+        wireOpacity={0.10}
+      />
+      {/* Near foothills — dark, fills bottom edge */}
+      <MountainRange
+        posY={-50} posZ={-38}
+        seed={9.0} cols={36} rows={8}  width={200}
+        maxPeak={44} jitter={1.0} zDepth={4}
+        wireOpacity={0.08}
+      />
+    </>
+  )
+}
+
 function SceneContents() {
   return (
     <>
       <Lighting />
       <SceneBackground />
       <SunBurst />
+      <Mountains />
       <LifeTree />
       <OrbitingCoins />
       <CloudEnvironment />

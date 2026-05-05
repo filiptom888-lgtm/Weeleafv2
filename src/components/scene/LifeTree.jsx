@@ -241,19 +241,6 @@ export default function LifeTree() {
         </group>
       ))}
 
-      {/* Bottom fork — dramatic 3-way split at trunk base */}
-      <BottomFork />
-
-      {/* Mid-trunk branches */}
-      {MID_BRANCHES.map((b, i) => (
-        <Branch key={`mid-${i}`} {...b} />
-      ))}
-
-      {/* Near-canopy branches */}
-      {BRANCHES.map((b, i) => (
-        <Branch key={`top-${i}`} {...b} />
-      ))}
-
       {/* Main canopy foliage */}
       {FOLIAGE_CLUSTERS.map((f, i) => (
         <FoliageCluster key={i} position={f.pos} radius={f.r} density={f.d} color={f.c} wireColor={f.wc} />

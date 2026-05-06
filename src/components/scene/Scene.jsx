@@ -205,15 +205,15 @@ const skyFrag = `
     float hazeY = smoothstep(0.55, 0.0, vUv.y);
     float haze  = hazeX * hazeY;
 
-    // Vertical gradient
+    // Vertical gradient — warm horizon pushed to lower third
     vec3 color;
     float y = vUv.y;
-    if (y < 0.25) {
-      color = mix(bottom, horiz, y / 0.25);
-    } else if (y < 0.55) {
-      color = mix(horiz, mid, (y - 0.25) / 0.30);
+    if (y < 0.12) {
+      color = mix(bottom, horiz, y / 0.12);
+    } else if (y < 0.35) {
+      color = mix(horiz, mid, (y - 0.12) / 0.23);
     } else {
-      color = mix(mid, top, (y - 0.55) / 0.45);
+      color = mix(mid, top, (y - 0.35) / 0.65);
     }
 
     // Sun-side warm burst (upper right)
@@ -250,7 +250,7 @@ const sunburstFrag = `
   uniform float uTime;
 
   void main() {
-    vec2 sunUV = vec2(0.72, 0.72);
+    vec2 sunUV = vec2(0.72, 0.42);
     vec2 d = vUv - sunUV;
     float dist = length(d);
 
@@ -466,7 +466,6 @@ function SceneContents() {
       <Lighting />
       <SceneBackground />
       <SunBurst />
-      <Mountains />
       <LifeTree />
       <OrbitingCoins />
       <CloudEnvironment />

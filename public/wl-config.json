@@ -78,12 +78,12 @@
       "emissiveColor": "#4ade80",
       "angle": 51,
       "content": {
-        "title": "Hemptation",
-        "tagline": "Hamp — en helt naturlig del",
+        "title": "🌿 Hamp: Naturens stærkeste valg ",
+        "tagline": " fundamentet for et nyt bæredygtigt setup",
         "sections": [
           {
             "heading": "🌿 Hvorfor hamp?",
-            "text": "Hamp lyder i manges øre som noget skidt og forbinder det med en ulovlig plante. I WL ser vi det som planetens eget bæredygtige valg til en grønnere omstilling. Vi ved at hamp er en af de mest effektive afgrøder i moderne landbrug.",
+            "text": "Hamp er ikke bare endnu en grøn ressource.\nDet er en af naturens mest effektive, regenerative og alsidige planter – og en direkte nøgle til at erstatte store dele af det olie‑, træ‑ og fossilbaserede produktionssystem, vi kender i dag.\n\nHamp vokser hurtigt, kræver næsten ingen vand, ingen pesticider, binder enorme mængder CO₂ og kan forarbejdes til tusindvis af produkter.\nDet gør hamp til WL’s stærkeste valg – og til en af fremtidens vigtigste bæredygtige ressourcer.\n",
             "items": [
               {
                 "name": "Hurtig vækst",
@@ -108,16 +108,52 @@
             ]
           },
           {
-            "heading": "🧴 Hemptation Wholesome — Pleje & Velvære",
-            "text": "Hemptation er en serie af moderne plejeprodukter, skabt med fokus på renhed, kvalitet og ansvarlighed. Udviklet til dig, der ønsker effektiv hud- og hårpleje uden unødvendige eller skadelige ingredienser — og med respekt for både kroppen og miljøet.\n\nAlle Hemptation-produkter er fri for parabener, sulfater, silikoner, kunstige farvestoffer og unødvendige tilsætningsstoffer. Kernen er hamp — rig på omega-3, omega-6, antioxidanter og vitaminer, der styrker hudens naturlige barriere og giver en sund, naturlig glød.\n\nProdukterne er 100 % veganske og ikke testet på dyr."
+            "heading": "🌱 Hvorfor hamp er naturens mest bæredygtige ressource",
+            "text": "Binder 2–4 gange mere CO₂ pr. m² end skov\n\nModner på 100–120 dage\n\nKan dyrkes i næsten alle klimaer\n\nGiver både fiber, biomasse, olie, protein og byggemateriale\n\nRegenererer jorden og forbedrer biodiversitet\n\nKan indgå i fuldt cirkulære produktionskredsløb\n\nHamp er en af de få afgrøder, der både kan erstatte råmaterialer og samtidig forbedre naturens tilstand."
           },
           {
-            "heading": "🏷️ WL — Vores eget kvalitetsmærke",
-            "text": "På vores produkter vil du ikke se logoer du normalt forbinder med gode certificerede produkter. I WL er vores logo sit eget mærke på, at vi understøtter alle de andre certificeringer. Alle produkter støtter WLs nuværende certificeringer.\n\nDerfor er WL et mærke du kan stole på."
+            "heading": "🔄 Industrier og produkter, der allerede kan erstattes med hamp",
+            "text": "Her er de vigtigste sektorer, hvor hamp kan overtage – og i mange tilfælde levere et bedre, stærkere og mere bæredygtigt alternativ."
           },
           {
-            "heading": "🛏️ Hemptation Harmony & Wellness — Tekstiler",
-            "text": "Hampetekstiler repræsenterer en ny standard inden for bæredygtige og ansvarligt producerede tekstilprodukter. Fremstillet af 100 % naturlige hampfibre kombinerer disse produkter høj kvalitet, funktionalitet og miljøhensyn i én løsning.\n\nCertificeret med OEKO-TEX, BSCI, SEDEX og FCA. Hampens naturlige egenskaber gør vores tekstiler antibakterielle, allergivenlige og temperaturregulerende — du sover sundt og komfortabelt året rundt.\n\nVores hampprodukter er slidstærke, bliver blødere med tiden og er produceret under etisk forsvarlige forhold."
+            "heading": "🧱 Byggeri og konstruktion",
+            "text": "Isolering\n\nByggeblokke og biobeton (hempcrete)\n\nPlader, paneler og kompositter\n\nAkustikmaterialer\n→ Erstatning for: beton, glasuld, stenuld, gips, plastkompositter, træbaserede plader"
+          },
+          {
+            "heading": "👕 Tekstil- og modeindustrien",
+            "text": "Tøj, garn, stof, denim, tekniske tekstiler\n→ Erstatning for: bomuld, polyester, nylon, elastan, viskose"
+          },
+          {
+            "heading": "🛋 Interiør og møbler",
+            "text": "Møbelstoffer\n\nFyldmaterialer\n\nBiobaserede plader\n→ Erstatning for: skumplast, MDF, spånplader, syntetiske tekstiler"
+          },
+          {
+            "heading": "🌾 Landbrug og fødevarer",
+            "text": "Proteinpulver\n\nFrø, olie, mel\n\nDyrefoder\n→ Erstatning for: soja, raps, animalsk protein, importerede foderkilder"
+          },
+          {
+            "heading": "🌍 Plast og emballage",
+            "text": "Bioplast\n\nKomposterbare emballager\n\nEngangsprodukter\n→ Erstatning for: olieplast, EPS, PET, PLA"
+          },
+          {
+            "heading": "🚗 Transport og industri",
+            "text": "Letvægtskompositter til biler, tog og fly\n\nIndustrifibre\n→ Erstatning for: glasfiber, kulfiber, plastkompositter"
+          },
+          {
+            "heading": "🧴 Kosmetik og wellness",
+            "text": "Hudpleje\n\nOlieprodukter\n\nSalver og cremer\n→ Erstatning for: petrokemiske olier, syntetiske ingredienser"
+          },
+          {
+            "heading": "🧼 Rengøring og husholdning",
+            "text": "Biobaserede rengøringsmidler\n\nSvampe, klude, børster\n→ Erstatning for: plast, kemikalier, syntetiske fibre"
+          },
+          {
+            "heading": "📦 Papir og emballage",
+            "text": "Papir, karton, poser\n→ Erstatning for: træbaseret papir, plastposer"
+          },
+          {
+            "heading": "🌿 Hamp er WL’s valg – fordi det er naturens valg",
+            "text": "WL arbejder for et fremtidigt setup, hvor materialer ikke skader naturen, men styrker den.\nHamp passer perfekt ind i den vision:\n\nDen er regenerativ\n\nDen er cirkulær\n\nDen er lokal\n\nDen er stærk, holdbar og alsidig\n\nDen kan skalere globalt uden at skade økosystemer\n\nHamp er ikke fremtiden.\nHamp er nuet – og den ressource, der kan bringe os hurtigst væk fra et olie‑ og fossilbaseret samfund."
           }
         ]
       },

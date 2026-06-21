@@ -1,12 +1,11 @@
 import React, { useState, useCallback } from 'react'
 import useStore from '../../store/useStore'
-
-const LEAFY_GIF = 'http://weeleaf.com/wp-content/uploads/2026/02/ezgif-6bf49774fe4d6570.gif'
+import leafyGif from '../../../img/leafy.gif'
 
 function LeafyImg({ size = 72 }) {
   return (
     <img
-      src={LEAFY_GIF}
+      src={leafyGif}
       width={size}
       height={size}
       alt="Leafy"

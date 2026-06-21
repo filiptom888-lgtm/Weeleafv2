@@ -7,7 +7,7 @@ const ADMIN_PASSWORD = '1234'
 // ────────────────────────────────────────────────────────────────────────────
 
 const SESSION_KEY = 'wl_admin_auth'
-const LOCKED_COIN_IDS = ['shop'] // coins that can only have their image changed
+const LOCKED_COIN_IDS = ['shop', 'member'] // coins that can only have their image changed
 
 function useAdminAuth() {
   const [authed, setAuthed] = useState(() => sessionStorage.getItem(SESSION_KEY) === '1')
@@ -215,6 +215,92 @@ function ShopAdmin() {
         onClick={() => { if (window.confirm('Nulstil shop til standard?')) resetShop() }}
         className="w-full py-2 rounded-xl text-xs text-white/22 hover:text-white/45 border border-white/8 transition-colors"
       >↺ Nulstil shop</button>
+    </div>
+  )
+}
+
+/* ─── Pending shop approvals ─────────────────────────────────────────── */
+function PendingShopAdmin() {
+  const { pendingShopSubmissions, approveShopSubmission, rejectShopSubmission } = useStore()
+  const pending = pendingShopSubmissions.filter((s) => s.status === 'pending')
+  const reviewed = pendingShopSubmissions.filter((s) => s.status !== 'pending')
+
+  return (
+    <div className="space-y-4">
+      <p className="text-white/35 text-xs leading-relaxed">
+        Medlemmer kan foreslå produkter fra Login-noden. Godkendte produkter vises i Shop.
+      </p>
+
+      {pending.length === 0 && (
+        <div className="flex flex-col items-center py-10 gap-2 rounded-xl" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <span className="text-3xl opacity-30">✅</span>
+          <p className="text-white/25 text-xs">Ingen afventende produkter</p>
+        </div>
+      )}
+
+      {pending.map((sub) => (
+        <div
+          key={sub.id}
+          className="rounded-xl overflow-hidden"
+          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(251,191,36,0.25)' }}
+        >
+          <div className="px-4 py-3 flex items-start gap-3 border-b" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+            {sub.product.imageUrl ? (
+              <img src={sub.product.imageUrl} alt="" className="w-14 h-14 rounded-lg object-cover flex-shrink-0" onError={(e) => (e.target.style.display = 'none')} />
+            ) : (
+              <div className="w-14 h-14 rounded-lg flex items-center justify-center text-2xl flex-shrink-0" style={{ background: `${sub.categoryColor}18` }}>
+                {sub.categoryIcon || '🛍️'}
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-semibold text-white/90">{sub.product.name}</div>
+              <div className="text-[10px] text-white/35 mt-0.5">
+                {sub.categoryLabel} · {sub.userName} · {new Date(sub.submittedAt).toLocaleDateString('da-DK')}
+              </div>
+              {sub.product.price && (
+                <div className="text-xs mt-1" style={{ color: sub.categoryColor }}>{sub.product.price}</div>
+              )}
+            </div>
+            <span className="text-[10px] px-2 py-0.5 rounded-full flex-shrink-0" style={{ background: 'rgba(251,191,36,0.15)', color: '#fbbf24', border: '1px solid rgba(251,191,36,0.3)' }}>
+              Afventer
+            </span>
+          </div>
+          {sub.product.desc && (
+            <p className="px-4 py-3 text-xs text-white/55 leading-relaxed line-clamp-4">{sub.product.desc}</p>
+          )}
+          <div className="px-4 pb-4 flex gap-2">
+            <button
+              onClick={() => approveShopSubmission(sub.id)}
+              className="flex-1 py-2 rounded-xl text-xs font-semibold text-white transition-all"
+              style={{ background: 'rgba(74,222,128,0.22)', border: '1px solid rgba(74,222,128,0.4)', color: '#86efac' }}
+            >
+              ✓ Godkend
+            </button>
+            <button
+              onClick={() => rejectShopSubmission(sub.id)}
+              className="flex-1 py-2 rounded-xl text-xs font-semibold transition-all"
+              style={{ background: 'rgba(248,113,113,0.12)', border: '1px solid rgba(248,113,113,0.3)', color: '#fca5a5' }}
+            >
+              ✕ Afvis
+            </button>
+          </div>
+        </div>
+      ))}
+
+      {reviewed.length > 0 && (
+        <div className="pt-2 space-y-2">
+          <div className="text-[10px] text-white/25 uppercase tracking-widest">Seneste beslutninger</div>
+          {reviewed.slice(0, 8).map((sub) => (
+            <div key={sub.id} className="flex items-center gap-2 px-3 py-2 rounded-lg text-[11px]" style={{ background: 'rgba(255,255,255,0.03)' }}>
+              <span>{sub.status === 'approved' ? '✓' : '✕'}</span>
+              <span className="text-white/50 truncate flex-1">{sub.product.name}</span>
+              <span className={sub.status === 'approved' ? 'text-green-400/70' : 'text-red-400/50'}>
+                {sub.status === 'approved' ? 'Godkendt' : 'Afvist'}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -688,6 +774,9 @@ function BlogAdmin() {
 
   return (
     <div className="space-y-3">
+      <p className="text-white/35 text-xs leading-relaxed">
+        Medlemmer skriver indlæg via Login-noden. Her kan admin moderere alle opslag.
+      </p>
       {sorted.length === 0 && (
         <p className="text-white/22 text-xs px-1">Ingen indlæg endnu.</p>
       )}
@@ -993,7 +1082,7 @@ function PublishAdmin() {
 
 /* ─── Admin Panel ────────────────────────────────────────────────────── */
 export default function AdminPanel() {
-  const { isAdminOpen, toggleAdmin, coins, addCoin, updateCoin, deleteCoin, resetCoins } = useStore()
+  const { isAdminOpen, toggleAdmin, coins, addCoin, updateCoin, deleteCoin, resetCoins, pendingShopSubmissions } = useStore()
   const [editingId, setEditingId] = useState(null)
   const [activeTab, setActiveTab] = useState('coins')
   const panelRef = useRef()
@@ -1025,6 +1114,8 @@ export default function AdminPanel() {
     if (LOCKED_COIN_IDS.includes(id)) return
     if (window.confirm('Delete this coin from the orbit?')) deleteCoin(id)
   }, [deleteCoin])
+
+  const pendingCount = pendingShopSubmissions.filter((s) => s.status === 'pending').length
 
   if (!isAdminOpen) return null
 
@@ -1083,7 +1174,7 @@ export default function AdminPanel() {
 
         {/* Tab switcher */}
         {authed && <div className="flex gap-1 px-4 pt-3 pb-1">
-          {[{ key: 'coins', label: '🌿 Nodes' }, { key: 'shop', label: '🛍️ Shop' }, { key: 'blog', label: '📝 Blog' }, { key: 'donation', label: '💳 Give' }, { key: 'stats', label: '📊 Tæller' }, { key: 'publish', label: '🚀 Publicér' }].map(({ key, label }) => (
+          {[{ key: 'coins', label: '🌿 Nodes' }, { key: 'shop', label: '🛍️ Shop' }, { key: 'approvals', label: pendingCount ? `✅ Godkend (${pendingCount})` : '✅ Godkend' }, { key: 'blog', label: '📝 Blog' }, { key: 'donation', label: '💳 Give' }, { key: 'stats', label: '📊 Tæller' }, { key: 'publish', label: '🚀 Publicér' }].map(({ key, label }) => (
             <button
               key={key}
               onClick={() => { setActiveTab(key); setEditingId(null) }}
@@ -1100,6 +1191,9 @@ export default function AdminPanel() {
         {authed && <div className="px-4 py-4 space-y-5">
           {/* Shop tab */}
           {activeTab === 'shop' && <ShopAdmin />}
+
+          {/* Shop approvals tab */}
+          {activeTab === 'approvals' && <PendingShopAdmin />}
 
           {/* Blog tab */}
           {activeTab === 'blog' && <BlogAdmin />}

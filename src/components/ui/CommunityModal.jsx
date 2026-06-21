@@ -186,7 +186,10 @@ export default function CommunityModal({ coin, onClose }) {
           {sorted.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 gap-3">
               <span className="text-5xl opacity-20">📝</span>
-              <p className="text-white/25 text-sm text-center">Ingen indlæg endnu.<br />Åbn Admin → Blog for at skrive det første.</p>
+              <p className="text-white/25 text-sm text-center">
+                Ingen indlæg endnu.<br />
+                Log ind via Member Login-noden for at skrive det første.
+              </p>
             </div>
           ) : (
             <>

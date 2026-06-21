@@ -3,6 +3,7 @@ import { gsap } from 'gsap'
 import useStore from '../../store/useStore'
 import ShopModal from './ShopModal'
 import CommunityModal from './CommunityModal'
+import MemberModal from './MemberModal'
 
 /* ─── Content renderer ───────────────────────────────────────────────── */
 function ContentRenderer({ content }) {
@@ -140,6 +141,11 @@ export default function Modal() {
   // Community coin is a blog reader
   if (activeCoin.id === 'community') {
     return <CommunityModal coin={activeCoin} onClose={closeModal} />
+  }
+
+  // Member login coin — auth + user dashboard
+  if (activeCoin.id === 'member') {
+    return <MemberModal coin={activeCoin} onClose={closeModal} />
   }
 
   return (

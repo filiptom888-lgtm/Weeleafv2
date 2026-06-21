@@ -21,7 +21,7 @@ export const COINS = [
     subtitle: 'The Core',
     color: '#4ade80',
     emissiveColor: '#22c55e',
-    angle: 0,
+    angle: 0, // 8 nodes evenly spaced at i/8 * 360
     content: {
       title: 'WL — Et levende fællesskab',
       tagline: 'For mennesker, idéer og bæredygtig fremtid',
@@ -77,7 +77,7 @@ export const COINS = [
     subtitle: 'Hemptation',
     color: '#86efac',
     emissiveColor: '#4ade80',
-    angle: 51.43,
+    angle: 45,
     content: {
       title: 'Hemptation',
       tagline: 'Hamp — en helt naturlig del',
@@ -116,7 +116,7 @@ export const COINS = [
     subtitle: 'WL Hive',
     color: '#fbbf24',
     emissiveColor: '#f59e0b',
-    angle: 102.86,
+    angle: 90,
     content: {
       title: 'WL Hive',
       tagline: 'Fremtidens bolig — bygget i dag',
@@ -157,7 +157,7 @@ export const COINS = [
     subtitle: 'The Shop',
     color: '#60a5fa',
     emissiveColor: '#3b82f6',
-    angle: 154.29,
+    angle: 135,
     content: {
       title: 'WL Shop',
       tagline: 'Når du handler gennem WL, skaber du værdi for både dig selv og fællesskabet. Samtidig støtter du udviklingen af nye bæredygtige løsninger.',
@@ -177,7 +177,7 @@ export const COINS = [
     subtitle: 'Social Movement',
     color: '#c084fc',
     emissiveColor: '#a855f7',
-    angle: 205.71,
+    angle: 180,
     content: {
       title: 'Social Movement',
       tagline: 'Join the conversation. Shape the future.',
@@ -221,7 +221,7 @@ export const COINS = [
     subtitle: 'Support WL',
     color: '#f472b6',
     emissiveColor: '#ec4899',
-    angle: 257.14,
+    angle: 225,
     content: {
       title: 'Støt WL',
       tagline: 'Én krone. Uendelige ringe i vandet.',
@@ -263,10 +263,30 @@ export const COINS = [
     subtitle: 'Community',
     color: '#34d399',
     emissiveColor: '#10b981',
-    angle: 308.57,
+    angle: 270,
     content: {
       title: 'WL Community',
       tagline: 'Et digitalt fællesskab for mennesker, der vil udvikle bæredygtige idéer.',
+    },
+  },
+
+  /* ─────────────────────── 8. MEMBER LOGIN ─────────────────────── */
+  {
+    id: 'member',
+    label: 'Login',
+    subtitle: 'Member Login',
+    color: '#38bdf8',
+    emissiveColor: '#0ea5e9',
+    angle: 315,
+    content: {
+      title: 'WL Medlemslogin',
+      tagline: 'Log ind for at skrive i Community',
+      sections: [
+        {
+          heading: '🔑 Medlemsområde',
+          text: 'Klik på denne node for at logge ind eller oprette en konto. Som medlem kan du udgive blogindlæg, der vises i Community-noden.',
+        },
+      ],
     },
   },
 ]

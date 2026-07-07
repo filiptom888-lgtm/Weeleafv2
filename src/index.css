@@ -17,10 +17,10 @@ html, body, #root {
 }
 
 /* Custom scrollbar for modals */
-::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.1); }
-::-webkit-scrollbar-thumb { background: rgba(74, 222, 128, 0.4); border-radius: 2px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(74, 222, 128, 0.7); }
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: rgba(200, 144, 74, 0.08); }
+::-webkit-scrollbar-thumb { background: rgba(200, 144, 74, 0.35); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(74, 180, 100, 0.55); }
 
 /* Float keyframe */
 @keyframes float {

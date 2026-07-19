@@ -20,6 +20,7 @@ export default function FullscreenShell({
   headerLayout = 'pill',
 }) {
   const uiRef = useRef()
+  const scrollRef = useRef(null)
   const [vantaReady, setVantaReady] = useState(false)
   const revealScene = useStore((s) => s.revealScene)
 
@@ -61,7 +62,12 @@ export default function FullscreenShell({
   return (
     <div className="fixed inset-0 z-50 flex flex-col min-h-0 overflow-hidden">
       <div className="absolute inset-0 z-0" style={{ background: WL.modalBackdrop }} />
-      <VantaBackground effect="clouds" preset="cloudsBlue" enabled={vantaReady} />
+      <VantaBackground
+        effect="clouds"
+        preset="cloudsBlue"
+        enabled={vantaReady}
+        pauseOnScrollRef={scrollRef}
+      />
       <div
         className="absolute inset-0 z-[2] pointer-events-none"
         style={{
@@ -121,7 +127,7 @@ export default function FullscreenShell({
           </div>
         )}
 
-        <main className="flex-1 overflow-y-auto min-h-0">
+        <main ref={scrollRef} className="flex-1 overflow-y-auto min-h-0">
           <div
             className={`mx-auto px-4 md:px-8 ${
               headerLayout === 'pill' ? 'py-4 md:py-5' : 'py-6 md:py-8'

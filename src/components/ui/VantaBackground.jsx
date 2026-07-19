@@ -6,8 +6,7 @@ const LOADERS = {
   birds: () => import('vanta/dist/vanta.birds.min'),
 }
 
-/** Delay init so prior WebGL contexts (R3F) can release first */
-const INIT_DELAY_MS = { clouds: 0, birds: 350, cloudsBlue: 160 }
+const INIT_DELAY_MS = { clouds: 0, birds: 350, cloudsBlue: 120 }
 
 /** WeeLeaf-tuned palettes — see https://www.vantajs.com */
 export const VANTA_PRESETS = {
@@ -16,30 +15,39 @@ export const VANTA_PRESETS = {
     mouseControls: true,
     touchControls: true,
     gyroControls: false,
+    mouseEase: true,
     minHeight: 200,
     minWidth: 200,
+    speed: 0.65,
+    scale: 3.2,
+    scaleMobile: 10,
     skyColor: 0xc9956a,
     cloudColor: 0xf8ead8,
     cloudShadowColor: 0x4a3020,
     sunColor: 0xffb84d,
     sunGlareColor: 0xff8f3f,
     sunlightColor: 0xffd080,
-    speed: 0.7,
   },
-  /** Fullscreen modals — classic blue sky */
+  /**
+   * Fullscreen modals — lighter clouds, no mouse/scroll parallax (major scroll lag fix).
+   * Higher scale = fewer pixels rendered (Vanta default scale is 3).
+   */
   cloudsBlue: {
-    mouseControls: true,
-    touchControls: true,
+    mouseControls: false,
+    touchControls: false,
     gyroControls: false,
+    mouseEase: false,
     minHeight: 200,
     minWidth: 200,
+    speed: 0.42,
+    scale: 5.5,
+    scaleMobile: 14,
     skyColor: 0x68b8eb,
     cloudColor: 0xffffff,
     cloudShadowColor: 0x2a7ab8,
     sunColor: 0xffe9a8,
     sunGlareColor: 0xffd060,
     sunlightColor: 0xfff8e0,
-    speed: 0.85,
   },
   birds: {
     mouseControls: true,
@@ -71,6 +79,41 @@ function cleanupEl(el) {
   }
 }
 
+/** Pause WebGL loop while a scrollable modal body is moving */
+function usePauseOnScroll(scrollRef, vantaRef) {
+  useEffect(() => {
+    const el = scrollRef?.current
+    if (!el) return undefined
+
+    let resumeTimer
+    const pause = () => {
+      const v = vantaRef.current
+      if (v?.req) {
+        cancelAnimationFrame(v.req)
+        v.req = null
+      }
+    }
+    const resume = () => {
+      clearTimeout(resumeTimer)
+      resumeTimer = window.setTimeout(() => {
+        const v = vantaRef.current
+        if (v && !v.req) v.animationLoop()
+      }, 120)
+    }
+
+    const onScroll = () => {
+      pause()
+      resume()
+    }
+
+    el.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      clearTimeout(resumeTimer)
+      el.removeEventListener('scroll', onScroll)
+    }
+  }, [scrollRef, vantaRef])
+}
+
 export default function VantaBackground({
   effect = 'clouds',
   preset,
@@ -79,10 +122,13 @@ export default function VantaBackground({
   options = {},
   enabled = true,
   visible = true,
+  pauseOnScrollRef = null,
 }) {
   const elRef = useRef(null)
   const vantaRef = useRef(null)
   const presetKey = preset || effect
+
+  usePauseOnScroll(pauseOnScrollRef, vantaRef)
 
   useEffect(() => {
     if (!enabled) return undefined
@@ -136,6 +182,7 @@ export default function VantaBackground({
         opacity: visible ? 1 : 0,
         visibility: visible ? 'visible' : 'hidden',
         transition: 'opacity 0.45s ease-out, visibility 0.45s ease-out',
+        contain: 'strict',
         ...style,
       }}
       aria-hidden

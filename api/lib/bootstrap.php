@@ -19,10 +19,17 @@ function wl_config(): array
         'cors_origin' => '*',
     ];
 
-    $local = __DIR__ . '/../config.local.php';
-    if (is_file($local)) {
-        $config = array_merge($defaults, require $local);
-        return $config;
+    // Survives Hostinger Git deploy (lives outside public_html)
+    $domainRoot = dirname(__DIR__, 3);
+    $candidates = [
+        $domainRoot . '/api-config.local.php',
+        __DIR__ . '/../config.local.php',
+    ];
+    foreach ($candidates as $local) {
+        if (is_file($local)) {
+            $config = array_merge($defaults, require $local);
+            return $config;
+        }
     }
 
     $config = $defaults;

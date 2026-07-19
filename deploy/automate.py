@@ -80,11 +80,15 @@ return [
     'cors_origin' => '*',
 ];
 """
+    domain_root = f"/home/{USER}/domains/weeleaf.com"
 
     sftp = client.open_sftp()
     with sftp.file(f"{remote_base}/api/config.local.php", "w") as f:
         f.write(php_config)
+    with sftp.file(f"{domain_root}/api-config.local.php", "w") as f:
+        f.write(php_config)
     sftp.close()
+    print("==> Wrote api-config.local.php (persists across Git deploys)")
 
     print("==> Health check")
     _, stdout, stderr = client.exec_command(f"curl -s https://weeleaf.com/api/health")

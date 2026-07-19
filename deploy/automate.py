@@ -57,6 +57,9 @@ def main() -> int:
             path = PROJECT / "dist" / extra
             if path.is_file():
                 scp.put(str(path), f"{remote_base}/{extra}")
+        avatars_dir = PROJECT / "dist" / "avatars"
+        if avatars_dir.is_dir():
+            scp.put(str(avatars_dir), remote_base, recursive=True)
 
         print("==> Uploading API")
         scp.put(str(PROJECT / "api"), remote_base, recursive=True)
@@ -87,6 +90,23 @@ return [
     _, stdout, stderr = client.exec_command(f"curl -s https://weeleaf.com/api/health")
     health = stdout.read().decode()
     print(health or stderr.read().decode())
+
+    print("==> Auth route check")
+    _, stdout, _ = client.exec_command(
+        "curl -s -o /dev/null -w '%{http_code}' -X POST https://weeleaf.com/api/auth/login "
+        "-H 'Content-Type: application/json' -d '{\"email\":\"x@y.z\",\"password\":\"x\"}'"
+    )
+    login_code = stdout.read().decode().strip()
+    print(f"POST /auth/login -> HTTP {login_code} (expect 401, not 404)")
+
+    _, stdout, _ = client.exec_command(
+        "curl -s -o /dev/null -w '%{http_code}' https://weeleaf.com/api/users"
+    )
+    users_code = stdout.read().decode().strip()
+    print(f"GET /users -> HTTP {users_code} (expect 401, not 404)")
+
+    if login_code == "404" or users_code == "404":
+        print("WARNING: API auth routes return 404 — Hostinger git deploy may have wiped api/. Re-run deploy.", file=sys.stderr)
 
     print("==> Coin image uploads folder")
     client.exec_command(f"mkdir -p {remote_base}/uploads/coins {remote_base}/uploads/avatars && chmod -R 755 {remote_base}/uploads")

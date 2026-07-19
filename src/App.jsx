@@ -3,6 +3,7 @@ import useStore from './store/useStore'
 import Scene from './components/scene/Scene'
 import Modal from './components/ui/Modal'
 import MainSceneBackground from './components/ui/MainSceneBackground'
+import ModalSceneBackground from './components/ui/ModalSceneBackground'
 import SceneTransition from './components/ui/SceneTransition'
 import LeafyAssistant from './components/ui/LeafyAssistant'
 import ChatBot from './components/ui/ChatBot'
@@ -80,6 +81,7 @@ export default function App() {
       </div>
 
       <SceneTransition />
+      <ModalSceneBackground />
       <Modal />
       <LeafyAssistant />
       <ChatBot />

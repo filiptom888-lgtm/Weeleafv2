@@ -80,9 +80,9 @@ function cleanupEl(el) {
 }
 
 /** Pause WebGL loop while a scrollable modal body is moving */
-function usePauseOnScroll(scrollRef, vantaRef) {
+function usePauseOnScroll(scrollTarget, vantaRef) {
   useEffect(() => {
-    const el = scrollRef?.current
+    const el = scrollTarget?.current ?? scrollTarget
     if (!el) return undefined
 
     let resumeTimer
@@ -111,7 +111,24 @@ function usePauseOnScroll(scrollRef, vantaRef) {
       clearTimeout(resumeTimer)
       el.removeEventListener('scroll', onScroll)
     }
-  }, [scrollRef, vantaRef])
+  }, [scrollTarget, vantaRef])
+}
+
+/** Pause / resume Vanta render loop without destroying WebGL context */
+function useVantaPaused(vantaRef, paused) {
+  useEffect(() => {
+    const v = vantaRef.current
+    if (!v) return undefined
+    if (paused) {
+      if (v.req) {
+        cancelAnimationFrame(v.req)
+        v.req = null
+      }
+    } else if (!v.req) {
+      v.animationLoop()
+    }
+    return undefined
+  }, [paused, vantaRef])
 }
 
 export default function VantaBackground({
@@ -122,13 +139,17 @@ export default function VantaBackground({
   options = {},
   enabled = true,
   visible = true,
+  persistent = false,
+  paused = false,
   pauseOnScrollRef = null,
+  pauseOnScrollEl = null,
 }) {
   const elRef = useRef(null)
   const vantaRef = useRef(null)
   const presetKey = preset || effect
 
-  usePauseOnScroll(pauseOnScrollRef, vantaRef)
+  usePauseOnScroll(pauseOnScrollEl ?? pauseOnScrollRef, vantaRef)
+  useVantaPaused(vantaRef, paused)
 
   useEffect(() => {
     if (!enabled) return undefined
@@ -159,15 +180,15 @@ export default function VantaBackground({
     return () => {
       cancelled = true
       window.clearTimeout(timer)
-      if (vantaRef.current) {
+      if (!persistent && vantaRef.current) {
         try {
           vantaRef.current.destroy()
         } catch (_) {}
         vantaRef.current = null
+        cleanupEl(elRef.current)
       }
-      cleanupEl(elRef.current)
     }
-  }, [effect, presetKey, enabled])
+  }, [effect, presetKey, enabled, persistent])
 
   if (!enabled) return null
 

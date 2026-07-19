@@ -1,12 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef } from 'react'
 import { gsap } from 'gsap'
-import VantaBackground from './VantaBackground'
 import useStore from '../../store/useStore'
-import { WL } from '../../styles/modalTheme'
 
 /**
- * Fullscreen overlay — Vanta blue-sky clouds + modern floating chrome.
- * headerLayout: 'pill' (default) | 'none' (title lives in children)
+ * Fullscreen overlay chrome — background is shared ModalSceneBackground in App.jsx.
  */
 export default function FullscreenShell({
   eyebrow = 'WeeLeaf',
@@ -21,42 +18,20 @@ export default function FullscreenShell({
 }) {
   const uiRef = useRef()
   const scrollRef = useRef(null)
-  const [vantaReady, setVantaReady] = useState(false)
-  const [liteSky, setLiteSky] = useState(false)
   const revealScene = useStore((s) => s.revealScene)
+  const setModalScrollRoot = useStore((s) => s.setModalScrollRoot)
 
   useEffect(() => {
-    const pickLite = () => {
-      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-      const narrow = window.innerWidth < 768
-      const lowCpu = (navigator.hardwareConcurrency || 8) <= 4
-      setLiteSky(reduced || narrow || lowCpu)
-    }
-    pickLite()
-    window.addEventListener('resize', pickLite)
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
-    mq.addEventListener('change', pickLite)
-    return () => {
-      window.removeEventListener('resize', pickLite)
-      mq.removeEventListener('change', pickLite)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (liteSky) return undefined
-    const t = window.setTimeout(() => setVantaReady(true), 80)
-    return () => {
-      window.clearTimeout(t)
-      setVantaReady(false)
-    }
-  }, [liteSky])
+    setModalScrollRoot(scrollRef.current)
+    return () => setModalScrollRoot(null)
+  }, [setModalScrollRoot])
 
   useEffect(() => {
     if (uiRef.current) {
       gsap.fromTo(
         uiRef.current,
-        { opacity: 0, y: 12 },
-        { opacity: 1, y: 0, duration: 0.32, ease: 'power2.out', delay: 0.08 }
+        { opacity: 0, y: 10 },
+        { opacity: 1, y: 0, duration: 0.24, ease: 'power2.out', delay: 0.04 }
       )
     }
   }, [])
@@ -70,7 +45,7 @@ export default function FullscreenShell({
     gsap.to(uiRef.current, {
       opacity: 0,
       y: 6,
-      duration: 0.22,
+      duration: 0.18,
       ease: 'power2.in',
       onComplete: onClose,
     })
@@ -79,37 +54,16 @@ export default function FullscreenShell({
   const maxW = contentClassName === 'max-w-7xl' ? 'max-w-7xl' : contentClassName === 'max-w-5xl' ? 'max-w-5xl' : 'max-w-5xl'
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col min-h-0 overflow-hidden">
-      <div
-        className={`absolute inset-0 z-0 ${liteSky ? 'modal-sky-lite' : ''}`}
-        style={{ background: WL.modalBackdrop }}
-      />
-      {!liteSky && (
-        <VantaBackground
-          effect="clouds"
-          preset="cloudsBlue"
-          enabled={vantaReady}
-          pauseOnScrollRef={scrollRef}
-        />
-      )}
-      <div
-        className="absolute inset-0 z-[2] pointer-events-none"
-        style={{
-          background:
-            'linear-gradient(180deg, rgba(255,255,255,0.1) 0%, rgba(30,90,140,0.04) 100%)',
-        }}
-      />
-
-      <div ref={uiRef} className="relative z-10 flex flex-col h-full min-h-0">
-        {/* Floating close */}
+    <div className="fixed inset-0 z-50 flex flex-col min-h-0 overflow-hidden pointer-events-none">
+      <div ref={uiRef} className="relative flex flex-col h-full min-h-0 pointer-events-auto">
         <button
           type="button"
           onClick={handleClose}
           className="fixed top-4 right-4 z-[60] w-10 h-10 flex items-center justify-center text-lg rounded-full transition-all hover:scale-105 hover:bg-white"
           style={{
-            color: WL.textOnModal,
+            color: '#1a2e3a',
             background: 'rgba(255,255,255,0.88)',
-            border: `1px solid ${WL.modalHeaderBorder}`,
+            border: '1px solid rgba(255,255,255,0.55)',
             boxShadow: '0 4px 20px rgba(30,90,140,0.18)',
           }}
           aria-label="Close"
@@ -122,29 +76,21 @@ export default function FullscreenShell({
             <div
               className="inline-flex flex-col gap-0.5 max-w-[calc(100%-3rem)] rounded-2xl px-4 py-3 backdrop-blur-xl"
               style={{
-                background: WL.modalHeaderGlass,
-                border: `1px solid ${WL.modalHeaderBorder}`,
+                background: 'rgba(255, 255, 255, 0.82)',
+                border: '1px solid rgba(255, 255, 255, 0.55)',
                 boxShadow: '0 8px 32px rgba(30,90,140,0.1)',
               }}
             >
               {eyebrow && (
-                <span
-                  className="text-[10px] uppercase tracking-[0.22em] font-semibold"
-                  style={{ color: WL.skyAccent }}
-                >
+                <span className="text-[10px] uppercase tracking-[0.22em] font-semibold text-[#2b6cb0]">
                   {eyebrow}
                 </span>
               )}
-              <h1
-                className="text-lg md:text-xl font-bold leading-tight tracking-tight"
-                style={{ color: WL.textOnModal }}
-              >
+              <h1 className="text-lg md:text-xl font-bold leading-tight tracking-tight text-[#1a2e3a]">
                 {title}
               </h1>
               {tagline && (
-                <p className="text-xs md:text-sm leading-snug" style={{ color: WL.textMutedOnModal }}>
-                  {tagline}
-                </p>
+                <p className="text-xs md:text-sm leading-snug text-[rgba(26,46,58,0.75)]">{tagline}</p>
               )}
             </div>
             {headerExtra}
@@ -165,8 +111,8 @@ export default function FullscreenShell({
           <footer
             className="flex-shrink-0 border-t backdrop-blur-xl"
             style={{
-              background: WL.modalHeaderGlass,
-              borderColor: WL.modalHeaderBorder,
+              background: 'rgba(255, 255, 255, 0.82)',
+              borderColor: 'rgba(255, 255, 255, 0.55)',
             }}
           >
             {footer}

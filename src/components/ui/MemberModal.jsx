@@ -16,13 +16,21 @@ import { AVATAR_OPTIONS } from '../../data/avatarOptions'
 
 function ProfileAvatarPicker({ currentUser }) {
   const updateUserProfile = useStore((s) => s.updateUserProfile)
+  const uploadUserAvatar = useStore((s) => s.uploadUserAvatar)
+  const fileRef = useRef(null)
   const [selected, setSelected] = useState(currentUser.avatarId ?? null)
+  const [previewUrl, setPreviewUrl] = useState(currentUser.avatarUrl ?? null)
   const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const [msg, setMsg] = useState('')
+
+  const MAX_BYTES = 5 * 1024 * 1024
+  const ACCEPT = 'image/jpeg,image/png,image/webp,image/gif'
 
   useEffect(() => {
     setSelected(currentUser.avatarId ?? null)
-  }, [currentUser.avatarId])
+    setPreviewUrl(currentUser.avatarUrl ?? null)
+  }, [currentUser.avatarId, currentUser.avatarUrl])
 
   const save = async () => {
     setSaving(true)
@@ -33,19 +41,78 @@ function ProfileAvatarPicker({ currentUser }) {
     else setMsg(res.error || 'Kunne ikke gemme.')
   }
 
+  const onPickFile = async (e) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    if (file.size > MAX_BYTES) {
+      setMsg('Billedet er for stort (max 5 MB).')
+      return
+    }
+    if (!ACCEPT.split(',').some((t) => file.type === t.trim())) {
+      setMsg('Kun JPG, PNG, WebP og GIF er tilladt.')
+      return
+    }
+    setUploading(true)
+    setMsg('')
+    const res = await uploadUserAvatar(file)
+    setUploading(false)
+    if (res.ok) {
+      setSelected('custom')
+      setPreviewUrl(useStore.getState().currentUser?.avatarUrl ?? null)
+      setMsg('Billede uploadet og beskåret!')
+    } else {
+      setMsg(res.error || 'Upload fejlede.')
+    }
+  }
+
   const changed = (selected ?? null) !== (currentUser.avatarId ?? null)
+  const displayUrl = selected === 'custom' ? previewUrl : null
 
   return (
     <div className="rounded-2xl p-5 space-y-4" style={accountCardStyle}>
       <div>
         <div className={accountLabelCls} style={{ color: WL.textSoft }}>Dit avatar</div>
         <div className="flex items-center gap-4 mt-2">
-          <UserAvatar name={currentUser.name} avatarId={selected} size={56} rounded="square" />
-          <p className="text-sm leading-relaxed" style={{ color: WL.textMuted }}>
-            Vælg et avatar-billede eller brug dine initialer.
-          </p>
+          <UserAvatar
+            name={currentUser.name}
+            avatarId={selected}
+            avatarUrl={displayUrl}
+            size={56}
+            rounded="square"
+          />
+          <div className="min-w-0">
+            <p className="text-sm leading-relaxed" style={{ color: WL.textMuted }}>
+              Vælg et standard-billede, upload dit eget, eller brug initialer.
+            </p>
+            <p className="text-[10px] mt-1" style={{ color: WL.textSoft }}>
+              Upload: max 5 MB · beskæres i midten · komprimeres til 256×256
+            </p>
+          </div>
         </div>
       </div>
+
+      <input
+        ref={fileRef}
+        type="file"
+        accept={ACCEPT}
+        className="hidden"
+        onChange={onPickFile}
+      />
+
+      <button
+        type="button"
+        onClick={() => fileRef.current?.click()}
+        disabled={uploading}
+        className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all disabled:opacity-50"
+        style={{
+          color: WL.green,
+          background: WL.skyAccentSoft,
+          border: `1px solid ${WL.borderLight}`,
+        }}
+      >
+        {uploading ? 'Uploader og beskærer…' : '📷 Upload dit eget billede'}
+      </button>
 
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
         <button
@@ -60,6 +127,20 @@ function ProfileAvatarPicker({ currentUser }) {
         >
           {currentUser.name?.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase() || '?'}
         </button>
+        {currentUser.avatarId === 'custom' && (
+          <button
+            type="button"
+            onClick={() => setSelected('custom')}
+            className="aspect-square rounded-xl overflow-hidden transition-all p-0.5"
+            style={{
+              border: `2px solid ${selected === 'custom' ? WL.greenBright : WL.borderLight}`,
+              background: selected === 'custom' ? WL.skyAccentSoft : 'rgba(255,255,255,0.6)',
+            }}
+            title="Dit upload"
+          >
+            <img src={currentUser.avatarUrl} alt="" className="w-full h-full object-cover rounded-lg" />
+          </button>
+        )}
         {AVATAR_OPTIONS.map((opt) => (
           <button
             key={opt.id}
@@ -89,7 +170,7 @@ function ProfileAvatarPicker({ currentUser }) {
         </button>
       )}
       {msg && (
-        <p className="text-xs text-center" style={{ color: msg.includes('gemt') ? WL.green : '#b91c1c' }}>
+        <p className="text-xs text-center" style={{ color: msg.includes('fejl') || msg.includes('stor') ? '#b91c1c' : WL.green }}>
           {msg}
         </p>
       )}
@@ -300,6 +381,7 @@ function UserBlogAdmin({ coin, currentUser }) {
       author: currentUser.name,
       authorId: currentUser.id,
       authorAvatarId: currentUser.avatarId ?? null,
+      authorAvatarUrl: currentUser.avatarUrl ?? null,
       date: new Date().toISOString(),
       body: '',
       tags: '',
@@ -319,6 +401,7 @@ function UserBlogAdmin({ coin, currentUser }) {
       author: currentUser.name,
       authorId: currentUser.id,
       authorAvatarId: currentUser.avatarId ?? null,
+      authorAvatarUrl: currentUser.avatarUrl ?? null,
       tags: draft.tags ? draft.tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
     }
     if (isNew) await addBlogPost(post)
@@ -484,7 +567,13 @@ function UserDashboard({ coin, currentUser }) {
       <div className="rounded-2xl p-5 mb-4 flex-shrink-0" style={accountCardStyle}>
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <UserAvatar name={currentUser.name} avatarId={currentUser.avatarId} size={56} rounded="square" />
+            <UserAvatar
+              name={currentUser.name}
+              avatarId={currentUser.avatarId}
+              avatarUrl={currentUser.avatarUrl}
+              size={56}
+              rounded="square"
+            />
             <div>
               <h2 className="text-lg font-bold" style={{ color: WL.text }}>{currentUser.name}</h2>
               <p className="text-xs" style={{ color: WL.textMuted }}>{currentUser.email}</p>

@@ -11,15 +11,16 @@ function initialsFromName(name) {
     .toUpperCase()
 }
 
-/** Shared avatar — stock image or initials fallback */
+/** Shared avatar — stock image, custom upload, or initials fallback */
 export default function UserAvatar({
   name = '',
   avatarId = null,
+  avatarUrl = null,
   size = 40,
   rounded = 'full',
   className = '',
 }) {
-  const src = avatarSrc(avatarId)
+  const src = avatarSrc(avatarId, avatarUrl)
   const radius = rounded === 'square' ? 'rounded-2xl' : 'rounded-full'
   const px = typeof size === 'number' ? size : 40
   const textSize = px >= 56 ? 'text-lg' : px >= 40 ? 'text-xs' : 'text-[10px]'

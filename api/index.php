@@ -354,12 +354,42 @@ try {
             $avatarId = wl_valid_avatar_id(
                 $body['avatarId'] === null || $body['avatarId'] === '' ? null : (string) $body['avatarId']
             );
-            wl_pdo()->prepare('UPDATE users SET avatar_id = :avatar_id WHERE id = :id')->execute([
+            $prev = wl_pdo()->prepare('SELECT avatar_id FROM users WHERE id = :id LIMIT 1');
+            $prev->execute(['id' => $user['id']]);
+            $prevRow = $prev->fetch();
+            if (($prevRow['avatar_id'] ?? '') === 'custom' && $avatarId !== 'custom') {
+                wl_delete_user_avatar_file($user['id']);
+            }
+            wl_pdo()->prepare(
+                'UPDATE users SET avatar_id = :avatar_id, avatar_url = :avatar_url WHERE id = :id'
+            )->execute([
                 'avatar_id' => $avatarId,
+                'avatar_url' => $avatarId === 'custom' ? ($user['avatarUrl'] ?? null) : null,
                 'id' => $user['id'],
             ]);
             $stmt = wl_pdo()->prepare(
-                'SELECT id, name, email, role, avatar_id, created_at FROM users WHERE id = :id LIMIT 1'
+                'SELECT id, name, email, role, avatar_id, avatar_url, created_at FROM users WHERE id = :id LIMIT 1'
+            );
+            $stmt->execute(['id' => $user['id']]);
+            wl_ok(['user' => wl_user_payload($stmt->fetch())]);
+        })(),
+
+        $uri === '/auth/me/avatar' && $method === 'POST' => (function () {
+            $user = wl_require_auth();
+            if (empty($_FILES['image'])) {
+                wl_error('Billede påkrævet (multipart field: image).');
+            }
+            $binary = wl_validate_image_upload($_FILES['image'], 5 * 1024 * 1024);
+            $imageUrl = wl_save_user_avatar_file($user['id'], $binary);
+            wl_pdo()->prepare(
+                'UPDATE users SET avatar_id = :avatar_id, avatar_url = :avatar_url WHERE id = :id'
+            )->execute([
+                'avatar_id' => 'custom',
+                'avatar_url' => $imageUrl,
+                'id' => $user['id'],
+            ]);
+            $stmt = wl_pdo()->prepare(
+                'SELECT id, name, email, role, avatar_id, avatar_url, created_at FROM users WHERE id = :id LIMIT 1'
             );
             $stmt->execute(['id' => $user['id']]);
             wl_ok(['user' => wl_user_payload($stmt->fetch())]);
@@ -378,7 +408,7 @@ try {
         $uri === '/users' && $method === 'GET' => (function () {
             wl_require_auth(true);
             $rows = wl_pdo()->query(
-                'SELECT id, name, email, role, avatar_id, created_at FROM users ORDER BY email ASC'
+                'SELECT id, name, email, role, avatar_id, avatar_url, created_at FROM users ORDER BY email ASC'
             )->fetchAll();
             $users = array_map(fn ($row) => wl_user_payload($row), $rows);
             wl_ok(['users' => $users]);
@@ -411,7 +441,7 @@ try {
                 'role' => $role,
                 'id' => $userId,
             ]);
-            $stmt = wl_pdo()->prepare('SELECT id, name, email, role, avatar_id, created_at FROM users WHERE id = :id LIMIT 1');
+            $stmt = wl_pdo()->prepare('SELECT id, name, email, role, avatar_id, avatar_url, created_at FROM users WHERE id = :id LIMIT 1');
             $stmt->execute(['id' => $userId]);
             wl_ok(['user' => wl_user_payload($stmt->fetch())]);
         })(),

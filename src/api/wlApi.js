@@ -84,6 +84,26 @@ export const api = {
   updateProfile: (patch) =>
     request('/auth/me', { method: 'PUT', body: patch, auth: true }),
 
+  uploadAvatar: async (file) => {
+    const form = new FormData()
+    form.append('image', file, file.name || 'avatar.jpg')
+    const token = getToken()
+    try {
+      const res = await fetch(`${API_BASE}/auth/me/avatar`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: form,
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || data.ok === false) {
+        return { ok: false, error: data.error || `Serverfejl (${res.status})` }
+      }
+      return { ok: true, ...data }
+    } catch {
+      return { ok: false, error: 'Kunne ikke uploade avatar.' }
+    }
+  },
+
   logout: () => request('/auth/logout', { method: 'POST', auth: true }),
 
   saveCoins: (coins) =>

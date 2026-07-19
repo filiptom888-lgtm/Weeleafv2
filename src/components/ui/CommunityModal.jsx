@@ -48,7 +48,12 @@ function FeedPost({ post }) {
       style={{ borderColor: WL.borderLight }}
     >
       <div className="flex items-center gap-2.5 mb-3">
-        <UserAvatar name={post.author} avatarId={post.authorAvatarId} size={40} />
+        <UserAvatar
+          name={post.author}
+          avatarId={post.authorAvatarId}
+          avatarUrl={post.authorAvatarUrl}
+          size={40}
+        />
         <div className="flex items-center gap-1.5 flex-wrap leading-none min-w-0">
           <span className="font-bold text-[15px]" style={{ color: WL.text }}>
             {post.author || 'Anonym'}
@@ -127,6 +132,7 @@ function CommunitySidebar({ blogPosts, stats }) {
         list.push({
           name: post.author || 'Anonym',
           avatarId: post.authorAvatarId ?? null,
+          avatarUrl: post.authorAvatarUrl ?? null,
         })
       }
     }
@@ -182,7 +188,12 @@ function CommunitySidebar({ blogPosts, stats }) {
           <ul className="space-y-2">
             {authors.map((author) => (
               <li key={author.name} className="flex items-center gap-2">
-                <UserAvatar name={author.name} avatarId={author.avatarId} size={28} />
+                <UserAvatar
+                  name={author.name}
+                  avatarId={author.avatarId}
+                  avatarUrl={author.avatarUrl}
+                  size={28}
+                />
                 <span className="text-sm truncate" style={{ color: WL.textMuted }}>{author.name}</span>
               </li>
             ))}
@@ -283,7 +294,12 @@ function CommunityRightPanel({ blogPosts, stats, siteStats, currentUser }) {
       {currentUser ? (
         <SideCard title="Din konto">
           <div className="flex items-center gap-3">
-            <UserAvatar name={currentUser.name} avatarId={currentUser.avatarId} size={40} />
+            <UserAvatar
+              name={currentUser.name}
+              avatarId={currentUser.avatarId}
+              avatarUrl={currentUser.avatarUrl}
+              size={40}
+            />
             <div className="min-w-0">
               <p className="text-sm font-semibold" style={{ color: WL.text }}>
                 {currentUser.name}

@@ -172,7 +172,33 @@ const useStore = create((set, get) => ({
     set((s) => ({
       currentUser: res.user,
       blogPosts: s.blogPosts.map((p) =>
-        p.authorId === userId ? { ...p, authorAvatarId: res.user.avatarId ?? null } : p
+        p.authorId === userId
+          ? {
+              ...p,
+              authorAvatarId: res.user.avatarId ?? null,
+              authorAvatarUrl: res.user.avatarUrl ?? null,
+            }
+          : p
+      ),
+    }))
+    return { ok: true }
+  },
+
+  uploadUserAvatar: async (file) => {
+    const res = await api.uploadAvatar(file)
+    if (!res.ok) return res
+    saveCachedUser(res.user)
+    const userId = res.user.id
+    set((s) => ({
+      currentUser: res.user,
+      blogPosts: s.blogPosts.map((p) =>
+        p.authorId === userId
+          ? {
+              ...p,
+              authorAvatarId: res.user.avatarId ?? null,
+              authorAvatarUrl: res.user.avatarUrl ?? null,
+            }
+          : p
       ),
     }))
     return { ok: true }

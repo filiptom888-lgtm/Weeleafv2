@@ -89,7 +89,7 @@ return [
     print(health or stderr.read().decode())
 
     print("==> Coin image uploads folder")
-    client.exec_command(f"mkdir -p {remote_base}/uploads/coins && chmod -R 755 {remote_base}/uploads")
+    client.exec_command(f"mkdir -p {remote_base}/uploads/coins {remote_base}/uploads/avatars && chmod -R 755 {remote_base}/uploads")
     uploads_htaccess = PROJECT / "uploads" / ".htaccess"
     if uploads_htaccess.is_file():
         with SCPClient(client.get_transport()) as scp:

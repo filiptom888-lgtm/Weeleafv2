@@ -17,6 +17,11 @@ function wl_uploads_coins_dir(): string
     return wl_uploads_dir('coins');
 }
 
+function wl_uploads_avatars_dir(): string
+{
+    return wl_uploads_dir('avatars');
+}
+
 function wl_sanitize_asset_id(string $id): string
 {
     $safe = preg_replace('/[^a-z0-9_-]/i', '', $id);
@@ -53,6 +58,93 @@ function wl_decode_data_url(string $dataUrl): ?array
         return null;
     }
     return ['mime' => $m[1], 'data' => $binary];
+}
+
+function wl_validate_image_upload(array $file, int $maxBytes = 5242880): string
+{
+    if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+        wl_error('Upload fejlede — prøv igen.');
+    }
+    if (($file['size'] ?? 0) > $maxBytes) {
+        wl_error('Billedet er for stort (max 5 MB).');
+    }
+    $binary = file_get_contents((string) ($file['tmp_name'] ?? ''));
+    if ($binary === false || $binary === '') {
+        wl_error('Kunne ikke læse uploadet billede.');
+    }
+    $info = @getimagesizefromstring($binary);
+    if ($info === false) {
+        wl_error('Filen er ikke et gyldigt billede.');
+    }
+    $allowed = [IMAGETYPE_JPEG, IMAGETYPE_PNG, IMAGETYPE_WEBP, IMAGETYPE_GIF];
+    if (!in_array($info[2], $allowed, true)) {
+        wl_error('Kun JPG, PNG, WebP og GIF er tilladt.');
+    }
+    return $binary;
+}
+
+/** Center-crop to square, then resize + compress for avatars */
+function wl_crop_square_avatar_binary(string $binary, int $size = 256): array
+{
+    if (!function_exists('imagecreatefromstring')) {
+        wl_error('Billedebehandling er ikke tilgængelig på serveren.');
+    }
+
+    $src = @imagecreatefromstring($binary);
+    if ($src === false) {
+        wl_error('Kunne ikke behandle billedet.');
+    }
+
+    $w = imagesx($src);
+    $h = imagesy($src);
+    $side = min($w, $h);
+    $sx = (int) floor(($w - $side) / 2);
+    $sy = (int) floor(($h - $side) / 2);
+
+    $dst = imagecreatetruecolor($size, $size);
+    imagealphablending($dst, false);
+    imagesavealpha($dst, true);
+    $transparent = imagecolorallocatealpha($dst, 0, 0, 0, 127);
+    imagefilledrectangle($dst, 0, 0, $size, $size, $transparent);
+    imagecopyresampled($dst, $src, 0, 0, $sx, $sy, $size, $size, $side, $side);
+    imagedestroy($src);
+
+    ob_start();
+    if (function_exists('imagewebp')) {
+        imagewebp($dst, null, 82);
+        $mime = 'image/webp';
+        $ext = 'webp';
+    } else {
+        imagepng($dst, null, 8);
+        $mime = 'image/png';
+        $ext = 'png';
+    }
+    $out = ob_get_clean();
+    imagedestroy($dst);
+
+    return ['binary' => $out, 'mime' => $mime, 'ext' => $ext];
+}
+
+function wl_save_user_avatar_file(string $userId, string $binary): string
+{
+    $resized = wl_crop_square_avatar_binary($binary, 256);
+    $ext = $resized['ext'] ?? 'webp';
+    $safeId = wl_sanitize_asset_id($userId);
+    $path = wl_uploads_avatars_dir() . '/' . $safeId . '.' . $ext;
+    file_put_contents($path, $resized['binary']);
+    return wl_media_public_path('avatars', $userId, $ext) . '?v=' . time();
+}
+
+function wl_delete_user_avatar_file(string $userId): void
+{
+    $safeId = wl_sanitize_asset_id($userId);
+    $dir = wl_uploads_avatars_dir();
+    foreach (['webp', 'png', 'jpg', 'jpeg', 'gif'] as $ext) {
+        $path = $dir . '/' . $safeId . '.' . $ext;
+        if (is_file($path)) {
+            @unlink($path);
+        }
+    }
 }
 
 function wl_resize_image_binary(string $binary, int $maxSize = 256): array

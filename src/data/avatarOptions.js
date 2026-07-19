@@ -7,7 +7,8 @@ export const AVATAR_OPTIONS = [
   { id: '5', label: 'Orange', src: '/avatars/avatar-5.svg' },
 ]
 
-export function avatarSrc(avatarId) {
+export function avatarSrc(avatarId, avatarUrl = null) {
+  if (avatarId === 'custom' && avatarUrl) return avatarUrl
   const opt = AVATAR_OPTIONS.find((a) => a.id === String(avatarId))
   return opt?.src ?? null
 }

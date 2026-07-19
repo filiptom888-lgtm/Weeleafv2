@@ -115,7 +115,7 @@ function wl_require_auth(bool $adminOnly = false): array
     $hash = hash('sha256', $token);
     wl_migrate_user_avatars();
     $stmt = wl_pdo()->prepare(
-        'SELECT s.id AS session_id, s.expires_at, u.id, u.name, u.email, u.role, u.avatar_id, u.created_at
+        'SELECT s.id AS session_id, s.expires_at, u.id, u.name, u.email, u.role, u.avatar_id, u.avatar_url, u.created_at
          FROM sessions s
          JOIN users u ON u.id = s.user_id
          WHERE s.token_hash = :hash
@@ -170,6 +170,12 @@ function wl_migrate_user_avatars(): void
                 "ALTER TABLE users ADD COLUMN avatar_id VARCHAR(16) NULL DEFAULT NULL AFTER role"
             );
         }
+        $urlCol = wl_pdo()->query("SHOW COLUMNS FROM users LIKE 'avatar_url'")->fetchAll();
+        if (!$urlCol) {
+            wl_pdo()->exec(
+                "ALTER TABLE users ADD COLUMN avatar_url VARCHAR(512) NULL DEFAULT NULL AFTER avatar_id"
+            );
+        }
     } catch (Throwable $e) {
         // Column may already exist on some hosts.
     }
@@ -207,6 +213,15 @@ function wl_user_payload(array $row): array
         $payload['avatarId'] = $row['avatarId'] ?: null;
     } else {
         $payload['avatarId'] = null;
+    }
+    if (array_key_exists('avatar_url', $row)) {
+        $payload['avatarUrl'] = $row['avatar_url'] !== null && $row['avatar_url'] !== ''
+            ? (string) $row['avatar_url']
+            : null;
+    } elseif (array_key_exists('avatarUrl', $row)) {
+        $payload['avatarUrl'] = $row['avatarUrl'] ?: null;
+    } else {
+        $payload['avatarUrl'] = null;
     }
     return $payload;
 }
@@ -333,7 +348,7 @@ function wl_fetch_posts(): array
     wl_migrate_user_avatars();
     $rows = wl_pdo()->query(
         'SELECT p.id, p.author_id, p.author, p.title, p.body, p.image_url, p.tags, p.created_at,
-                u.avatar_id AS author_avatar_id
+                u.avatar_id AS author_avatar_id, u.avatar_url AS author_avatar_url
          FROM posts p
          LEFT JOIN users u ON u.id = p.author_id
          ORDER BY p.created_at DESC'
@@ -343,11 +358,13 @@ function wl_fetch_posts(): array
     foreach ($rows as $row) {
         $tags = $row['tags'] ? json_decode($row['tags'], true) : [];
         $avatarId = $row['author_avatar_id'] ?? null;
+        $avatarUrl = $row['author_avatar_url'] ?? null;
         $posts[] = [
             'id' => $row['id'],
             'author' => $row['author'],
             'authorId' => $row['author_id'],
             'authorAvatarId' => $avatarId !== null && $avatarId !== '' ? (string) $avatarId : null,
+            'authorAvatarUrl' => $avatarUrl !== null && $avatarUrl !== '' ? (string) $avatarUrl : null,
             'title' => $row['title'],
             'body' => $row['body'],
             'imageUrl' => $row['image_url'] ?? '',

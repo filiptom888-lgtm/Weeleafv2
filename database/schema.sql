@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash VARCHAR(255)  NOT NULL,
   role          ENUM('member','admin') NOT NULL DEFAULT 'member',
   avatar_id     VARCHAR(16)   NULL DEFAULT NULL,
+  avatar_url    VARCHAR(512)  NULL DEFAULT NULL,
   created_at    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at    DATETIME      NULL ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uq_users_email (email),

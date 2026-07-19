@@ -113,8 +113,9 @@ function wl_require_auth(bool $adminOnly = false): array
     }
 
     $hash = hash('sha256', $token);
+    wl_migrate_user_avatars();
     $stmt = wl_pdo()->prepare(
-        'SELECT s.id AS session_id, s.expires_at, u.id, u.name, u.email, u.role, u.created_at
+        'SELECT s.id AS session_id, s.expires_at, u.id, u.name, u.email, u.role, u.avatar_id, u.created_at
          FROM sessions s
          JOIN users u ON u.id = s.user_id
          WHERE s.token_hash = :hash
@@ -133,14 +134,7 @@ function wl_require_auth(bool $adminOnly = false): array
         wl_error('Kræver admin adgang.', 403);
     }
 
-    return [
-        'id' => $row['id'],
-        'name' => $row['name'],
-        'email' => $row['email'],
-        'role' => $row['role'],
-        'createdAt' => gmdate('c', strtotime($row['created_at'])),
-        'sessionId' => $row['session_id'],
-    ];
+    return wl_user_payload($row) + ['sessionId' => $row['session_id']];
 }
 
 function wl_create_session(string $userId): array
@@ -162,9 +156,41 @@ function wl_create_session(string $userId): array
     return ['token' => $token, 'expiresAt' => $expires];
 }
 
+function wl_migrate_user_avatars(): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+    try {
+        $cols = wl_pdo()->query("SHOW COLUMNS FROM users LIKE 'avatar_id'")->fetchAll();
+        if (!$cols) {
+            wl_pdo()->exec(
+                "ALTER TABLE users ADD COLUMN avatar_id VARCHAR(16) NULL DEFAULT NULL AFTER role"
+            );
+        }
+    } catch (Throwable $e) {
+        // Column may already exist on some hosts.
+    }
+}
+
+function wl_valid_avatar_id(?string $avatarId): ?string
+{
+    if ($avatarId === null || $avatarId === '') {
+        return null;
+    }
+    $id = (string) $avatarId;
+    if (!in_array($id, ['1', '2', '3', '4', '5'], true)) {
+        wl_error('avatarId skal være 1–5 eller null.');
+    }
+    return $id;
+}
+
 function wl_user_payload(array $row): array
 {
-    return [
+    wl_migrate_user_avatars();
+    $payload = [
         'id' => $row['id'],
         'name' => $row['name'],
         'email' => $row['email'],
@@ -173,6 +199,16 @@ function wl_user_payload(array $row): array
             ? gmdate('c', strtotime($row['created_at']))
             : ($row['createdAt'] ?? gmdate('c')),
     ];
+    if (array_key_exists('avatar_id', $row)) {
+        $payload['avatarId'] = $row['avatar_id'] !== null && $row['avatar_id'] !== ''
+            ? (string) $row['avatar_id']
+            : null;
+    } elseif (array_key_exists('avatarId', $row)) {
+        $payload['avatarId'] = $row['avatarId'] ?: null;
+    } else {
+        $payload['avatarId'] = null;
+    }
+    return $payload;
 }
 
 function wl_get_config_key(string $key, $default = null)
@@ -294,18 +330,24 @@ function wl_fetch_posts(): array
 {
     wl_migrate_blog_post_images();
 
+    wl_migrate_user_avatars();
     $rows = wl_pdo()->query(
-        'SELECT id, author_id, author, title, body, image_url, tags, created_at
-         FROM posts ORDER BY created_at DESC'
+        'SELECT p.id, p.author_id, p.author, p.title, p.body, p.image_url, p.tags, p.created_at,
+                u.avatar_id AS author_avatar_id
+         FROM posts p
+         LEFT JOIN users u ON u.id = p.author_id
+         ORDER BY p.created_at DESC'
     )->fetchAll();
 
     $posts = [];
     foreach ($rows as $row) {
         $tags = $row['tags'] ? json_decode($row['tags'], true) : [];
+        $avatarId = $row['author_avatar_id'] ?? null;
         $posts[] = [
             'id' => $row['id'],
             'author' => $row['author'],
             'authorId' => $row['author_id'],
+            'authorAvatarId' => $avatarId !== null && $avatarId !== '' ? (string) $avatarId : null,
             'title' => $row['title'],
             'body' => $row['body'],
             'imageUrl' => $row['image_url'] ?? '',

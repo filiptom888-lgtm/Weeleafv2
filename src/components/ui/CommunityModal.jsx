@@ -1,19 +1,10 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
 import useStore from '../../store/useStore'
 import FullscreenShell from './FullscreenShell'
+import UserAvatar from './UserAvatar'
 import { WL, glassStyle } from '../../styles/modalTheme'
 
 const POSTS_PER_PAGE = 8
-
-function authorInitials(name) {
-  if (!name) return '?'
-  return name
-    .split(' ')
-    .map((w) => w[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase()
-}
 
 function formatFeedDate(iso) {
   try {
@@ -57,15 +48,7 @@ function FeedPost({ post }) {
       style={{ borderColor: WL.borderLight }}
     >
       <div className="flex items-center gap-2.5 mb-3">
-        <div
-          className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
-          style={{
-            background: WL.skyAccent,
-            boxShadow: '0 0 0 2px #fff',
-          }}
-        >
-          {authorInitials(post.author)}
-        </div>
+        <UserAvatar name={post.author} avatarId={post.authorAvatarId} size={40} />
         <div className="flex items-center gap-1.5 flex-wrap leading-none min-w-0">
           <span className="font-bold text-[15px]" style={{ color: WL.text }}>
             {post.author || 'Anonym'}
@@ -138,10 +121,13 @@ function CommunitySidebar({ blogPosts, stats }) {
     const seen = new Set()
     const list = []
     for (const post of blogPosts) {
-      const name = post.author || 'Anonym'
-      if (!seen.has(name)) {
-        seen.add(name)
-        list.push(name)
+      const key = post.authorId || post.author || 'Anonym'
+      if (!seen.has(key)) {
+        seen.add(key)
+        list.push({
+          name: post.author || 'Anonym',
+          avatarId: post.authorAvatarId ?? null,
+        })
       }
     }
     return list.slice(0, 6)
@@ -194,15 +180,10 @@ function CommunitySidebar({ blogPosts, stats }) {
       {authors.length > 0 && (
         <SideCard title="Aktive forfattere">
           <ul className="space-y-2">
-            {authors.map((name) => (
-              <li key={name} className="flex items-center gap-2">
-                <span
-                  className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0"
-                  style={{ background: WL.skyAccent }}
-                >
-                  {authorInitials(name)}
-                </span>
-                <span className="text-sm truncate" style={{ color: WL.textMuted }}>{name}</span>
+            {authors.map((author) => (
+              <li key={author.name} className="flex items-center gap-2">
+                <UserAvatar name={author.name} avatarId={author.avatarId} size={28} />
+                <span className="text-sm truncate" style={{ color: WL.textMuted }}>{author.name}</span>
               </li>
             ))}
           </ul>
@@ -301,12 +282,17 @@ function CommunityRightPanel({ blogPosts, stats, siteStats, currentUser }) {
 
       {currentUser ? (
         <SideCard title="Din konto">
-          <p className="text-sm font-semibold" style={{ color: WL.text }}>
-            {currentUser.name}
-          </p>
-          <p className="text-xs mt-1 break-all" style={{ color: WL.textSoft }}>
-            {currentUser.email}
-          </p>
+          <div className="flex items-center gap-3">
+            <UserAvatar name={currentUser.name} avatarId={currentUser.avatarId} size={40} />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold" style={{ color: WL.text }}>
+                {currentUser.name}
+              </p>
+              <p className="text-xs mt-0.5 break-all" style={{ color: WL.textSoft }}>
+                {currentUser.email}
+              </p>
+            </div>
+          </div>
           <p className="text-xs mt-3 leading-relaxed" style={{ color: WL.textMuted }}>
             Du er logget ind og kan bidrage til fællesskabet.
           </p>

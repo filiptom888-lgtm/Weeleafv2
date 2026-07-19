@@ -81,6 +81,9 @@ export const api = {
 
   me: () => request('/auth/me', { auth: true }),
 
+  updateProfile: (patch) =>
+    request('/auth/me', { method: 'PUT', body: patch, auth: true }),
+
   logout: () => request('/auth/logout', { method: 'POST', auth: true }),
 
   saveCoins: (coins) =>
@@ -141,4 +144,10 @@ export const api = {
 
   fetchSubmissions: () =>
     request('/submissions', { auth: true }),
+
+  fetchUsers: () =>
+    request('/users', { auth: true }),
+
+  updateUserRole: (userId, role) =>
+    request(`/users/${encodeURIComponent(userId)}/role`, { method: 'PUT', body: { role }, auth: true }),
 }

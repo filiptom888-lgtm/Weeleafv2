@@ -55,7 +55,9 @@ export default function FullscreenShell({
   const maxW =
     contentClassName === 'max-w-7xl'
       ? 'max-w-7xl'
-      : contentClassName === 'max-w-5xl'
+      : contentClassName === 'max-w-6xl'
+        ? 'max-w-6xl'
+        : contentClassName === 'max-w-5xl'
         ? 'max-w-5xl'
         : contentClassName === 'max-w-3xl'
           ? 'max-w-3xl'

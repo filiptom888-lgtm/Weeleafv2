@@ -10,6 +10,92 @@ import {
   accountCardStyle,
   adminShellStyle,
 } from '../../styles/modalTheme'
+import AccountTabBar from './AccountTabBar'
+import UserAvatar from './UserAvatar'
+import { AVATAR_OPTIONS } from '../../data/avatarOptions'
+
+function ProfileAvatarPicker({ currentUser }) {
+  const updateUserProfile = useStore((s) => s.updateUserProfile)
+  const [selected, setSelected] = useState(currentUser.avatarId ?? null)
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState('')
+
+  useEffect(() => {
+    setSelected(currentUser.avatarId ?? null)
+  }, [currentUser.avatarId])
+
+  const save = async () => {
+    setSaving(true)
+    setMsg('')
+    const res = await updateUserProfile({ avatarId: selected })
+    setSaving(false)
+    if (res.ok) setMsg('Avatar gemt!')
+    else setMsg(res.error || 'Kunne ikke gemme.')
+  }
+
+  const changed = (selected ?? null) !== (currentUser.avatarId ?? null)
+
+  return (
+    <div className="rounded-2xl p-5 space-y-4" style={accountCardStyle}>
+      <div>
+        <div className={accountLabelCls} style={{ color: WL.textSoft }}>Dit avatar</div>
+        <div className="flex items-center gap-4 mt-2">
+          <UserAvatar name={currentUser.name} avatarId={selected} size={56} rounded="square" />
+          <p className="text-sm leading-relaxed" style={{ color: WL.textMuted }}>
+            Vælg et avatar-billede eller brug dine initialer.
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+        <button
+          type="button"
+          onClick={() => setSelected(null)}
+          className="aspect-square rounded-xl flex items-center justify-center text-[10px] font-semibold transition-all"
+          style={{
+            border: `2px solid ${selected === null ? WL.greenBright : WL.borderLight}`,
+            background: selected === null ? WL.skyAccentSoft : 'rgba(255,255,255,0.6)',
+            color: WL.textMuted,
+          }}
+        >
+          {currentUser.name?.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase() || '?'}
+        </button>
+        {AVATAR_OPTIONS.map((opt) => (
+          <button
+            key={opt.id}
+            type="button"
+            onClick={() => setSelected(opt.id)}
+            className="aspect-square rounded-xl overflow-hidden transition-all p-0.5"
+            style={{
+              border: `2px solid ${selected === opt.id ? WL.greenBright : WL.borderLight}`,
+              background: selected === opt.id ? WL.skyAccentSoft : 'rgba(255,255,255,0.6)',
+            }}
+            title={opt.label}
+          >
+            <img src={opt.src} alt={opt.label} className="w-full h-full object-cover rounded-lg" />
+          </button>
+        ))}
+      </div>
+
+      {changed && (
+        <button
+          type="button"
+          onClick={save}
+          disabled={saving}
+          className="w-full py-2.5 rounded-xl text-sm font-semibold text-white transition-all disabled:opacity-50"
+          style={{ background: WL.greenBright }}
+        >
+          {saving ? 'Gemmer…' : 'Gem avatar'}
+        </button>
+      )}
+      {msg && (
+        <p className="text-xs text-center" style={{ color: msg.includes('gemt') ? WL.green : '#b91c1c' }}>
+          {msg}
+        </p>
+      )}
+    </div>
+  )
+}
 
 function StatusBadge({ status }) {
   const styles = {
@@ -29,31 +115,10 @@ function StatusBadge({ status }) {
 }
 
 function TabBar({ tabs, active, onChange }) {
-  return (
-    <div
-      className="flex gap-1.5 p-1 rounded-2xl overflow-x-auto"
-      style={{ background: 'rgba(255,255,255,0.55)', border: `1px solid ${WL.borderLight}` }}
-    >
-      {tabs.map(({ key, label, icon }) => (
-        <button
-          key={key}
-          type="button"
-          onClick={() => onChange(key)}
-          className="flex-1 min-w-0 py-2.5 px-2 rounded-xl text-[11px] font-semibold transition-all whitespace-nowrap"
-          style={{
-            background: active === key ? 'rgba(61,158,95,0.14)' : 'transparent',
-            border: `1px solid ${active === key ? WL.greenBright : 'transparent'}`,
-            color: active === key ? WL.green : WL.textMuted,
-          }}
-        >
-          {icon} {label}
-        </button>
-      ))}
-    </div>
-  )
+  return <AccountTabBar tabs={tabs} active={active} onChange={onChange} />
 }
 
-function RootTabBar({ active, onChange, isAdmin, dark }) {
+function RootTabBar({ active, onChange, isAdmin }) {
   if (!isAdmin) return null
   return (
     <div className="flex gap-2 mb-4 flex-shrink-0">
@@ -67,9 +132,9 @@ function RootTabBar({ active, onChange, isAdmin, dark }) {
           onClick={() => onChange(key)}
           className="flex-1 py-2.5 rounded-xl text-xs font-bold tracking-wide transition-all"
           style={{
-            background: active === key ? WL.greenBright : dark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.65)',
-            color: active === key ? '#fff' : dark ? 'rgba(255,255,255,0.7)' : WL.textMuted,
-            border: `1px solid ${active === key ? WL.green : dark ? 'rgba(255,255,255,0.12)' : WL.borderLight}`,
+            background: active === key ? WL.greenBright : 'rgba(255,255,255,0.65)',
+            color: active === key ? '#fff' : WL.textMuted,
+            border: `1px solid ${active === key ? WL.greenBright : WL.borderLight}`,
             boxShadow: active === key ? '0 4px 14px rgba(61,158,95,0.25)' : 'none',
           }}
         >
@@ -234,6 +299,7 @@ function UserBlogAdmin({ coin, currentUser }) {
       title: '',
       author: currentUser.name,
       authorId: currentUser.id,
+      authorAvatarId: currentUser.avatarId ?? null,
       date: new Date().toISOString(),
       body: '',
       tags: '',
@@ -252,6 +318,7 @@ function UserBlogAdmin({ coin, currentUser }) {
       ...draft,
       author: currentUser.name,
       authorId: currentUser.id,
+      authorAvatarId: currentUser.avatarId ?? null,
       tags: draft.tags ? draft.tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
     }
     if (isNew) await addBlogPost(post)
@@ -411,19 +478,13 @@ function UserDashboard({ coin, currentUser }) {
 
   const myPostCount = blogPosts.filter((p) => p.authorId === currentUser.id).length
   const myPendingShop = pendingShopSubmissions.filter((s) => s.userId === currentUser.id && s.status === 'pending').length
-  const initials = (currentUser.name || '?').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()
 
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="rounded-2xl p-5 mb-4 flex-shrink-0" style={accountCardStyle}>
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div
-              className="w-14 h-14 rounded-2xl flex items-center justify-center text-lg font-bold text-white"
-              style={{ background: `linear-gradient(135deg, ${WL.greenBright}, #4ade80)` }}
-            >
-              {initials}
-            </div>
+            <UserAvatar name={currentUser.name} avatarId={currentUser.avatarId} size={56} rounded="square" />
             <div>
               <h2 className="text-lg font-bold" style={{ color: WL.text }}>{currentUser.name}</h2>
               <p className="text-xs" style={{ color: WL.textMuted }}>{currentUser.email}</p>
@@ -465,6 +526,7 @@ function UserDashboard({ coin, currentUser }) {
         {activeTab === 'shop' && <UserShopAdmin coin={coin} currentUser={currentUser} />}
         {activeTab === 'profile' && (
           <div className="space-y-4">
+            <ProfileAvatarPicker currentUser={currentUser} />
             <div className="rounded-2xl p-5 space-y-4" style={accountCardStyle}>
               {[
                 ['Navn', currentUser.name],
@@ -523,7 +585,7 @@ export default function MemberModal({ coin, onClose }) {
       title={currentUser ? `Hej, ${currentUser.name.split(' ')[0]}` : 'Log ind'}
       tagline={coin.subtitle || 'Member Login'}
       onClose={onClose}
-      contentClassName={isAdminPanel ? 'max-w-5xl' : 'max-w-lg'}
+      contentClassName={isAdminPanel ? 'max-w-6xl' : 'max-w-lg'}
     >
       <div
         className="rounded-2xl px-5 md:px-8 py-6 md:py-8 min-h-[min(70vh,640px)] flex flex-col"
@@ -536,7 +598,7 @@ export default function MemberModal({ coin, onClose }) {
           <AuthGate coin={coin} onSuccess={onLoginSuccess} />
         ) : (
           <>
-                <RootTabBar active={rootPanel} onChange={setRootPanel} isAdmin={isAdmin} dark={isAdminPanel} />
+                <RootTabBar active={rootPanel} onChange={setRootPanel} isAdmin={isAdmin} />
             <div className="flex-1 min-h-0 overflow-hidden">
               {rootPanel === 'admin' && isAdmin ? (
                 <AdminDashboard />

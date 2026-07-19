@@ -164,6 +164,20 @@ const useStore = create((set, get) => ({
     set({ currentUser: null, pendingShopSubmissions: [] })
   },
 
+  updateUserProfile: async ({ avatarId }) => {
+    const res = await api.updateProfile({ avatarId: avatarId ?? null })
+    if (!res.ok) return res
+    saveCachedUser(res.user)
+    const userId = res.user.id
+    set((s) => ({
+      currentUser: res.user,
+      blogPosts: s.blogPosts.map((p) =>
+        p.authorId === userId ? { ...p, authorAvatarId: res.user.avatarId ?? null } : p
+      ),
+    }))
+    return { ok: true }
+  },
+
   persistCoins: async () => {
     const { coins } = get()
     return api.saveCoins(coins)

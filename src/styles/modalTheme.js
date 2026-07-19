@@ -58,11 +58,7 @@ export const accountCardStyle = {
   ...glassStyle,
 }
 
-/** Dark glass panel for admin — readable white text on warm sky modals */
+/** Admin panel — same light glass as member account */
 export const adminShellStyle = {
-  background: 'rgba(16, 28, 40, 0.88)',
-  border: '1px solid rgba(255, 255, 255, 0.14)',
-  boxShadow: '0 16px 48px rgba(0, 0, 0, 0.35)',
-  backdropFilter: 'blur(20px)',
-  WebkitBackdropFilter: 'blur(20px)',
+  ...glassStyle,
 }

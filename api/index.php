@@ -345,6 +345,26 @@ try {
             wl_ok(['user' => $user]);
         })(),
 
+        $uri === '/auth/me' && $method === 'PUT' => (function () {
+            $user = wl_require_auth();
+            $body = wl_json_input();
+            if (!array_key_exists('avatarId', $body)) {
+                wl_error('avatarId påkrævet.');
+            }
+            $avatarId = wl_valid_avatar_id(
+                $body['avatarId'] === null || $body['avatarId'] === '' ? null : (string) $body['avatarId']
+            );
+            wl_pdo()->prepare('UPDATE users SET avatar_id = :avatar_id WHERE id = :id')->execute([
+                'avatar_id' => $avatarId,
+                'id' => $user['id'],
+            ]);
+            $stmt = wl_pdo()->prepare(
+                'SELECT id, name, email, role, avatar_id, created_at FROM users WHERE id = :id LIMIT 1'
+            );
+            $stmt->execute(['id' => $user['id']]);
+            wl_ok(['user' => wl_user_payload($stmt->fetch())]);
+        })(),
+
         $uri === '/auth/logout' && $method === 'POST' => (function () {
             $token = wl_bearer_token();
             if ($token) {
@@ -353,6 +373,47 @@ try {
                 ]);
             }
             wl_ok();
+        })(),
+
+        $uri === '/users' && $method === 'GET' => (function () {
+            wl_require_auth(true);
+            $rows = wl_pdo()->query(
+                'SELECT id, name, email, role, avatar_id, created_at FROM users ORDER BY email ASC'
+            )->fetchAll();
+            $users = array_map(fn ($row) => wl_user_payload($row), $rows);
+            wl_ok(['users' => $users]);
+        })(),
+
+        preg_match('#^/users/([^/]+)/role$#', $uri, $m) && $method === 'PUT' => (function () use ($m) {
+            $admin = wl_require_auth(true);
+            $userId = $m[1];
+            $body = wl_json_input();
+            $role = $body['role'] ?? '';
+            if (!in_array($role, ['admin', 'member'], true)) {
+                wl_error('role skal være admin eller member.');
+            }
+            $stmt = wl_pdo()->prepare('SELECT id, role FROM users WHERE id = :id LIMIT 1');
+            $stmt->execute(['id' => $userId]);
+            $target = $stmt->fetch();
+            if (!$target) {
+                wl_error('Bruger ikke fundet.', 404);
+            }
+            if ($target['role'] === 'admin' && $role === 'member') {
+                $count = (int) wl_pdo()->query("SELECT COUNT(*) FROM users WHERE role = 'admin'")->fetchColumn();
+                if ($count <= 1) {
+                    wl_error('Kan ikke fjerne den sidste admin.');
+                }
+                if ($target['id'] === $admin['id']) {
+                    wl_error('Du kan ikke fjerne din egen admin-adgang her.');
+                }
+            }
+            wl_pdo()->prepare('UPDATE users SET role = :role WHERE id = :id')->execute([
+                'role' => $role,
+                'id' => $userId,
+            ]);
+            $stmt = wl_pdo()->prepare('SELECT id, name, email, role, avatar_id, created_at FROM users WHERE id = :id LIMIT 1');
+            $stmt->execute(['id' => $userId]);
+            wl_ok(['user' => wl_user_payload($stmt->fetch())]);
         })(),
 
         default => wl_error('Ikke fundet: ' . $uri, 404),

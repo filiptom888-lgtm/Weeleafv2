@@ -1,8 +1,10 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react'
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { gsap } from 'gsap'
 import useStore from '../../store/useStore'
+import { api } from '../../api/wlApi'
 import { uploadCoinImageFile } from '../../utils/coinImageUpload'
-import { WL, accountInputCls, accountInputStyle } from '../../styles/modalTheme'
+import { WL, accountInputCls, accountInputStyle, accountCardStyle, accountLabelCls } from '../../styles/modalTheme'
+import AccountTabBar from './AccountTabBar'
 
 const LOCKED_COIN_IDS = ['shop', 'member']
 const inputCls = accountInputCls
@@ -25,7 +27,7 @@ function ProductEditor({ product, catColor, onSave, onCancel }) {
   const inputStyle = accountInputStyle
 
   return (
-    <div className="rounded-xl p-3 space-y-2" style={{ background: 'rgba(255,255,255,0.05)', border: `1px solid ${catColor}28` }}>
+    <div className="rounded-xl p-3 space-y-2" style={{ background: 'rgba(255,255,255,0.8)', border: `1px solid ${catColor}28` }}>
       <input className={inputCls} value={draft.name} onChange={(e) => set({ name: e.target.value })} placeholder="Produktnavn" />
       <textarea className={`${inputCls} resize-none`} rows={3} value={draft.desc || ''} onChange={(e) => set({ desc: e.target.value })} placeholder="Produktbeskrivelse…" />
       <div className="grid grid-cols-2 gap-2">
@@ -33,9 +35,9 @@ function ProductEditor({ product, catColor, onSave, onCancel }) {
         <input className={inputCls} value={draft.link || ''} onChange={(e) => set({ link: e.target.value })} placeholder="Link URL" />
       </div>
       <input className={inputCls} value={(!draft.imageUrl || draft.imageUrl.startsWith('data:')) ? '' : draft.imageUrl} onChange={(e) => set({ imageUrl: e.target.value })} placeholder="Billede URL" />
-      <label className="flex items-center gap-2 cursor-pointer px-3 py-2 rounded-lg border border-dashed border-white/15 hover:border-white/30 transition-colors">
+      <label className="flex items-center gap-2 cursor-pointer px-3 py-2 rounded-lg border border-dashed  transition-colors">
         <span>📁</span>
-        <span className="text-xs text-white/40">Upload billede</span>
+        <span className="text-xs" style={{ color: WL.textSoft }}>Upload billede</span>
         <input type="file" accept="image/*" className="hidden" onChange={(e) => {
           const file = e.target.files?.[0]
           if (!file) return
@@ -53,7 +55,7 @@ function ProductEditor({ product, catColor, onSave, onCancel }) {
       )}
       <div className="flex gap-2 pt-1">
         <button onClick={() => onSave(draft)} className="flex-1 py-2 rounded-xl text-xs font-semibold text-white" style={{ background: `${catColor}22`, border: `1px solid ${catColor}44` }}>Gem</button>
-        <button onClick={onCancel} className="px-3 py-2 rounded-xl text-xs text-white/40 border border-white/10 transition-colors">Annuller</button>
+        <button onClick={onCancel} className="px-3 py-2 rounded-xl text-xs text-inherit border transition-colors" style={{ borderColor: WL.borderLight }}>Annuller</button>
       </div>
     </div>
   )
@@ -73,7 +75,7 @@ function ShopAdmin() {
   return (
     <div className="space-y-3">
       {shopCategories.map((cat) => (
-        <div key={cat.id} className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>
+        <div key={cat.id} className="rounded-xl overflow-hidden" style={{ border: `1px solid ${WL.borderLight}` }}>
           {/* Category header */}
           <div
             className="flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors"
@@ -82,21 +84,22 @@ function ShopAdmin() {
           >
             <span className="text-xl">{cat.icon}</span>
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium text-white/85">{cat.label}</div>
-              <div className="text-[10px] text-white/30">{cat.products?.length ?? 0} produkter</div>
+              <div className="text-sm font-medium" style={{ color: WL.text }}>{cat.label}</div>
+              <div className="text-[10px]" style={{ color: WL.textSoft }}>{cat.products?.length ?? 0} produkter</div>
             </div>
             <button
               onClick={(e) => { e.stopPropagation(); if (window.confirm(`Slet "${cat.label}"?`)) deleteShopCategory(cat.id) }}
-              className="text-white/20 hover:text-red-400 transition-colors text-base leading-none px-1"
+              className="hover:text-red-500 transition-colors text-base leading-none px-1"
+              style={{ color: WL.textSoft }}
             >×</button>
-            <span className="text-white/25 text-xs">{expandedCatId === cat.id ? '▴' : '▾'}</span>
+            <span className="text-xs" style={{ color: WL.textSoft }}>{expandedCatId === cat.id ? '▴' : '▾'}</span>
           </div>
 
           {/* Products */}
           {expandedCatId === cat.id && (
-            <div className="px-3 pb-3 pt-1 space-y-2 border-t" style={{ borderColor: 'rgba(255,255,255,0.07)' }}>
+            <div className="px-3 pb-3 pt-1 space-y-2 border-t" style={{ borderColor: WL.borderLight }}>
               {(cat.products ?? []).length === 0 && (
-                <p className="text-[11px] text-white/20 px-1 py-1">Ingen produkter endnu.</p>
+                <p className="text-[11px] px-1 py-1" style={{ color: WL.textSoft }}>Ingen produkter endnu.</p>
               )}
               {(cat.products ?? []).map((p) => (
                 <div key={p.id}>
@@ -108,16 +111,16 @@ function ShopAdmin() {
                       onCancel={() => setEditingKey(null)}
                     />
                   ) : (
-                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: 'rgba(255,255,255,0.72)' }}>
                       {p.imageUrl && (
                         <img src={p.imageUrl} alt="" className="w-8 h-8 object-cover rounded-lg flex-shrink-0" onError={(e) => (e.target.style.display = 'none')} />
                       )}
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm text-white/75 truncate">{p.name || '(navnløs)'}</div>
+                        <div className="text-sm truncate" style={{ color: WL.textMuted }}>{p.name || '(navnløs)'}</div>
                         {p.price && <div className="text-[10px]" style={{ color: cat.color }}>{p.price}</div>}
                       </div>
-                      <button onClick={() => setEditingKey(p.id)} className="text-white/25 hover:text-white/60 transition-colors text-sm px-1">✏</button>
-                      <button onClick={() => deleteShopProduct(cat.id, p.id)} className="text-white/20 hover:text-red-400 transition-colors text-base leading-none">×</button>
+                      <button onClick={() => setEditingKey(p.id)} className="hover:opacity-80 transition-colors text-sm px-1" style={{ color: WL.textMuted }}>✏</button>
+                      <button onClick={() => deleteShopProduct(cat.id, p.id)} className="hover:text-red-500 transition-colors text-base leading-none" style={{ color: WL.textSoft }}>×</button>
                     </div>
                   )}
                 </div>
@@ -132,7 +135,7 @@ function ShopAdmin() {
               ) : (
                 <button
                   onClick={() => setEditingKey(`new-${cat.id}`)}
-                  className="w-full text-xs py-2 rounded-lg border border-dashed border-white/12 text-white/30 hover:text-white/55 hover:border-white/25 transition-colors mt-1"
+                  className="w-full text-xs py-2 rounded-lg border border-dashed text-inherit hover:text-inherit  transition-colors mt-1"
                 >+ Tilføj produkt</button>
               )}
             </div>
@@ -142,7 +145,7 @@ function ShopAdmin() {
 
       {/* Add category */}
       {addingCat ? (
-        <div className="rounded-xl p-4 space-y-3" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.10)' }}>
+        <div className="rounded-xl p-4 space-y-3" style={{ background: 'rgba(255,255,255,0.72)', border: '1px solid rgba(255,255,255,0.10)' }}>
           <div className="grid grid-cols-2 gap-2">
             <input className={inputCls} value={newCat.label} onChange={(e) => setNewCat((d) => ({ ...d, label: e.target.value }))} placeholder="Kategorinavn" />
             <input className={inputCls} value={newCat.icon} onChange={(e) => setNewCat((d) => ({ ...d, icon: e.target.value }))} placeholder="Ikon (emoji)" />
@@ -163,7 +166,7 @@ function ShopAdmin() {
               className="flex-1 py-2 rounded-xl text-sm font-semibold text-white transition-all"
               style={{ background: 'rgba(96,165,250,0.2)', border: '1px solid rgba(96,165,250,0.4)' }}
             >Gem kategori</button>
-            <button onClick={() => setAddingCat(false)} className="px-4 py-2 rounded-xl text-sm text-white/40 border border-white/10 transition-colors">Annuller</button>
+            <button onClick={() => setAddingCat(false)} className="px-4 py-2 rounded-xl text-sm text-inherit border transition-colors" style={{ borderColor: WL.borderLight }}>Annuller</button>
           </div>
         </div>
       ) : (
@@ -176,7 +179,8 @@ function ShopAdmin() {
 
       <button
         onClick={() => { if (window.confirm('Nulstil shop til standard?')) resetShop() }}
-        className="w-full py-2 rounded-xl text-xs text-white/22 hover:text-white/45 border border-white/8 transition-colors"
+        className="w-full py-2 rounded-xl text-xs border transition-colors"
+        style={{ color: WL.textMuted, borderColor: WL.borderLight }}
       >↺ Nulstil shop</button>
     </div>
   )
@@ -201,14 +205,14 @@ function PendingShopAdmin() {
 
   return (
     <div className="space-y-4">
-      <p className="text-white/35 text-xs leading-relaxed">
+      <p className="text-xs leading-relaxed" style={{ color: WL.textMuted }}>
         Medlemmer kan foreslå produkter fra Login-noden. Godkendte produkter vises i Shop.
       </p>
 
       {pending.length === 0 && (
-        <div className="flex flex-col items-center py-10 gap-2 rounded-xl" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+        <div className="flex flex-col items-center py-10 gap-2 rounded-xl" style={{ background: 'rgba(255,255,255,0.65)', border: '1px solid rgba(255,255,255,0.06)' }}>
           <span className="text-3xl opacity-30">✅</span>
-          <p className="text-white/25 text-xs">Ingen afventende produkter</p>
+          <p className="text-xs" style={{ color: WL.textSoft }}>Ingen afventende produkter</p>
         </div>
       )}
 
@@ -216,7 +220,7 @@ function PendingShopAdmin() {
         <div
           key={sub.id}
           className="rounded-xl overflow-hidden"
-          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(251,191,36,0.25)' }}
+          style={{ background: 'rgba(255,255,255,0.72)', border: '1px solid rgba(251,191,36,0.25)' }}
         >
           <div className="px-4 py-3 flex items-start gap-3 border-b" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
             {sub.product.imageUrl ? (
@@ -227,8 +231,8 @@ function PendingShopAdmin() {
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-semibold text-white/90">{sub.product.name}</div>
-              <div className="text-[10px] text-white/35 mt-0.5">
+              <div className="text-sm font-semibold" style={{ color: WL.text }}>{sub.product.name}</div>
+              <div className="text-[10px] text-inherit mt-0.5">
                 {sub.categoryLabel} · {sub.userName} · {new Date(sub.submittedAt).toLocaleDateString('da-DK')}
               </div>
               {sub.product.price && (
@@ -240,13 +244,13 @@ function PendingShopAdmin() {
             </span>
           </div>
           {sub.product.desc && (
-            <p className="px-4 py-3 text-xs text-white/55 leading-relaxed line-clamp-4">{sub.product.desc}</p>
+            <p className="px-4 py-3 text-xs text-inherit leading-relaxed line-clamp-4">{sub.product.desc}</p>
           )}
           <div className="px-4 pb-4 flex gap-2">
             <button
               onClick={() => handleApprove(sub.id)}
               className="flex-1 py-2 rounded-xl text-xs font-semibold text-white transition-all"
-              style={{ background: 'rgba(74,222,128,0.22)', border: '1px solid rgba(74,222,128,0.4)', color: '#86efac' }}
+              style={{ background: 'rgba(74,222,128,0.22)', border: '1px solid rgba(74,222,128,0.4)', color: WL.green }}
             >
               ✓ Godkend
             </button>
@@ -263,11 +267,11 @@ function PendingShopAdmin() {
 
       {reviewed.length > 0 && (
         <div className="pt-2 space-y-2">
-          <div className="text-[10px] text-white/25 uppercase tracking-widest">Seneste beslutninger</div>
+          <div className="text-[10px] uppercase tracking-widest" style={{ color: WL.textSoft }}>Seneste beslutninger</div>
           {reviewed.slice(0, 8).map((sub) => (
-            <div key={sub.id} className="flex items-center gap-2 px-3 py-2 rounded-lg text-[11px]" style={{ background: 'rgba(255,255,255,0.03)' }}>
+            <div key={sub.id} className="flex items-center gap-2 px-3 py-2 rounded-lg text-[11px]" style={{ background: 'rgba(255,255,255,0.65)' }}>
               <span>{sub.status === 'approved' ? '✓' : '✕'}</span>
-              <span className="text-white/50 truncate flex-1">{sub.product.name}</span>
+              <span className="text-inherit truncate flex-1">{sub.product.name}</span>
               <span className={sub.status === 'approved' ? 'text-green-400/70' : 'text-red-400/50'}>
                 {sub.status === 'approved' ? 'Godkendt' : 'Afvist'}
               </span>
@@ -282,7 +286,7 @@ function PendingShopAdmin() {
 /* ─── Colour presets ─────────────────────────────────────────────────── */
 const COLOR_PRESETS = [
   { color: '#4ade80', emissiveColor: '#22c55e', label: 'Green' },
-  { color: '#86efac', emissiveColor: '#4ade80', label: 'Mint' },
+  { color: WL.green, emissiveColor: '#4ade80', label: 'Mint' },
   { color: '#fbbf24', emissiveColor: '#f59e0b', label: 'Amber' },
   { color: '#60a5fa', emissiveColor: '#3b82f6', label: 'Blue' },
   { color: '#c084fc', emissiveColor: '#a855f7', label: 'Purple' },
@@ -343,15 +347,16 @@ function CoinRow({ coin, index, onEdit, onDelete, isEditing, onSelect }) {
       )}
 
       <div className="flex-1 min-w-0">
-        <div className="text-sm font-medium text-white/90 truncate">{coin.subtitle}</div>
-        <div className="text-[10px] text-white/40">{coin.label} · {coin.angle}°</div>
+        <div className="text-sm font-medium truncate" style={{ color: WL.text }}>{coin.subtitle}</div>
+        <div className="text-[10px] text-inherit">{coin.label} · {coin.angle}°</div>
       </div>
 
       {LOCKED_COIN_IDS.includes(coin.id) ? (
-        <span className="text-white/20 text-xs px-1" title="Låst — kan ikke slettes">🔒</span>
+        <span className="text-xs px-1" style={{ color: WL.textSoft }} title="Låst — kan ikke slettes">🔒</span>
       ) : (
         <button
-          className="text-white/25 hover:text-red-400 transition-colors text-base leading-none px-1"
+          className="hover:text-red-500 transition-colors text-base leading-none px-1"
+          style={{ color: WL.textSoft }}
           onClick={(e) => { e.stopPropagation(); onDelete() }}
           title="Delete coin"
         >
@@ -389,8 +394,7 @@ function CoinEditor({ coin, onSave, onClose }) {
       content: { ...d.content, sections: d.content.sections.filter((_, idx) => idx !== i) },
     }))
 
-  const inputClass =
-    'w-full text-sm rounded-lg px-3 py-2 text-white/85 placeholder-white/25 outline-none border bg-white/5 border-white/10 focus:border-green-500/40 transition-colors'
+  const inputClass = accountInputCls
 
   const isLocked = LOCKED_COIN_IDS.includes(coin.id)
 
@@ -404,12 +408,12 @@ function CoinEditor({ coin, onSave, onClose }) {
 
         {/* Image-only editor */}
         <div className="space-y-2">
-          <label className="text-[10px] text-white/40 uppercase tracking-widest">Coin Image</label>
+          <label className="text-[10px] uppercase tracking-widest" style={{ color: WL.textSoft }}>Coin Image</label>
           <label className="flex items-center gap-3 cursor-pointer px-3 py-2.5 rounded-xl border border-dashed transition-colors hover:border-green-500/40 hover:bg-green-500/5" style={{ borderColor: 'rgba(255,255,255,0.15)' }}>
             <span className="text-xl">📁</span>
             <div>
-              <div className="text-sm text-white/70">Upload billede</div>
-              <div className="text-[10px] text-white/30">PNG, JPG, GIF, WebP</div>
+              <div className="text-sm" style={{ color: WL.textMuted }}>Upload billede</div>
+              <div className="text-[10px]" style={{ color: WL.textSoft }}>PNG, JPG, GIF, WebP</div>
             </div>
             <input type="file" accept="image/*" className="hidden" onChange={(e) => {
               const file = e.target.files?.[0]; if (!file) return
@@ -428,7 +432,7 @@ function CoinEditor({ coin, onSave, onClose }) {
 
         <div className="flex gap-2 pt-2">
           <button onClick={() => onSave(draft)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-all" style={{ background: 'rgba(74,222,128,0.3)', border: '1px solid rgba(74,222,128,0.4)' }}>Gem billede</button>
-          <button onClick={onClose} className="px-4 py-2.5 rounded-xl text-sm text-white/50 hover:text-white/80 border border-white/10 transition-colors">Annuller</button>
+          <button onClick={onClose} className="px-4 py-2.5 rounded-xl text-sm text-inherit hover:text-inherit border transition-colors" style={{ borderColor: WL.borderLight }}>Annuller</button>
         </div>
       </div>
     )
@@ -439,18 +443,18 @@ function CoinEditor({ coin, onSave, onClose }) {
       {/* Identity */}
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className="text-[10px] text-white/40 uppercase tracking-widest">Label</label>
+          <label className="text-[10px] uppercase tracking-widest" style={{ color: WL.textSoft }}>Label</label>
           <input className={inputClass} value={draft.label} onChange={(e) => set({ label: e.target.value })} placeholder="WL" />
         </div>
         <div>
-          <label className="text-[10px] text-white/40 uppercase tracking-widest">Subtitle</label>
+          <label className="text-[10px] uppercase tracking-widest" style={{ color: WL.textSoft }}>Subtitle</label>
           <input className={inputClass} value={draft.subtitle} onChange={(e) => set({ subtitle: e.target.value })} placeholder="The Core" />
         </div>
       </div>
 
       {/* Orbit angle */}
       <div>
-        <label className="text-[10px] text-white/40 uppercase tracking-widest">
+        <label className="text-[10px] uppercase tracking-widest" style={{ color: WL.textSoft }}>
           Orbit angle — {draft.angle}°
         </label>
         <input
@@ -462,7 +466,7 @@ function CoinEditor({ coin, onSave, onClose }) {
 
       {/* Coin Image */}
       <div className="space-y-2">
-        <label className="text-[10px] text-white/40 uppercase tracking-widest">Coin Image</label>
+        <label className="text-[10px] uppercase tracking-widest" style={{ color: WL.textSoft }}>Coin Image</label>
 
         {/* Upload button */}
         <label
@@ -471,8 +475,8 @@ function CoinEditor({ coin, onSave, onClose }) {
         >
           <span className="text-xl">📁</span>
           <div>
-            <div className="text-sm text-white/70">Upload image</div>
-            <div className="text-[10px] text-white/30">PNG, JPG, WebP — optimized & saved on server</div>
+            <div className="text-sm" style={{ color: WL.textMuted }}>Upload image</div>
+            <div className="text-[10px]" style={{ color: WL.textSoft }}>PNG, JPG, WebP — optimized & saved on server</div>
           </div>
           <input
             type="file"
@@ -490,7 +494,7 @@ function CoinEditor({ coin, onSave, onClose }) {
         {/* ─── OR paste URL ─── */}
         <div className="flex items-center gap-2">
           <div className="flex-1 h-px bg-white/10" />
-          <span className="text-[10px] text-white/25">or paste URL</span>
+          <span className="text-[10px] text-inherit">or paste URL</span>
           <div className="flex-1 h-px bg-white/10" />
         </div>
         <input
@@ -518,7 +522,7 @@ function CoinEditor({ coin, onSave, onClose }) {
               />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-xs text-white/50 truncate">
+              <div className="text-xs text-inherit truncate">
                 {draft.imageUrl.startsWith('data:') ? '📎 Uploaded file' : draft.imageUrl}
               </div>
               <button
@@ -534,7 +538,7 @@ function CoinEditor({ coin, onSave, onClose }) {
 
       {/* Colour presets */}
       <div>
-        <label className="text-[10px] text-white/40 uppercase tracking-widest">Colour</label>
+        <label className="text-[10px] uppercase tracking-widest" style={{ color: WL.textSoft }}>Colour</label>
         <div className="flex flex-wrap gap-2 mt-1.5">
           {COLOR_PRESETS.map((p) => (
             <button
@@ -567,15 +571,15 @@ function CoinEditor({ coin, onSave, onClose }) {
       </div>
 
       {/* Modal content */}
-      <div className="border-t border-white/10 pt-4 space-y-3">
-        <label className="text-[10px] text-white/40 uppercase tracking-widest">Modal Content</label>
+      <div className="border-t  pt-4 space-y-3">
+        <label className="text-[10px] uppercase tracking-widest" style={{ color: WL.textSoft }}>Modal Content</label>
         <input className={inputClass} value={draft.content?.title || ''} onChange={(e) => setDraft((d) => ({ ...d, content: { ...d.content, title: e.target.value } }))} placeholder="Modal title" />
         <input className={inputClass} value={draft.content?.tagline || ''} onChange={(e) => setDraft((d) => ({ ...d, content: { ...d.content, tagline: e.target.value } }))} placeholder="Tagline / subtitle" />
 
         {/* Sections */}
         <div className="space-y-3">
           {(draft.content?.sections || []).map((sec, i) => (
-            <div key={i} className="rounded-xl p-3 space-y-2" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+            <div key={i} className="rounded-xl p-3 space-y-2" style={{ background: 'rgba(255,255,255,0.72)', border: `1px solid ${WL.borderLight}` }}>
               <div className="flex items-center gap-2">
                 <input
                   className={`${inputClass} flex-1`}
@@ -583,7 +587,7 @@ function CoinEditor({ coin, onSave, onClose }) {
                   onChange={(e) => setSec(i, { heading: e.target.value })}
                   placeholder="Section heading"
                 />
-                <button onClick={() => removeSection(i)} className="text-white/25 hover:text-red-400 transition-colors text-lg leading-none flex-shrink-0">×</button>
+                <button onClick={() => removeSection(i)} className="hover:text-red-500 transition-colors text-lg leading-none flex-shrink-0" style={{ color: WL.textSoft }}>×</button>
               </div>
               <textarea
                 className={`${inputClass} resize-none`}
@@ -597,7 +601,7 @@ function CoinEditor({ coin, onSave, onClose }) {
 
           <button
             onClick={addSection}
-            className="w-full text-xs py-2 rounded-lg border border-dashed border-white/15 text-white/40 hover:text-white/70 hover:border-white/30 transition-colors"
+            className="w-full text-xs py-2 rounded-lg border border-dashed text-inherit hover:text-inherit  transition-colors"
           >
             + Add Section
           </button>
@@ -615,7 +619,8 @@ function CoinEditor({ coin, onSave, onClose }) {
         </button>
         <button
           onClick={onClose}
-          className="px-4 py-2.5 rounded-xl text-sm text-white/50 hover:text-white/80 border border-white/10 transition-colors"
+          className="px-4 py-2.5 rounded-xl text-sm border transition-colors"
+          style={{ color: WL.textMuted, borderColor: WL.borderLight }}
         >
           Cancel
         </button>
@@ -629,7 +634,7 @@ function BlogAdmin() {
   const [editingId, setEditingId] = useState(null)
   const [isNew, setIsNew] = useState(false)
   const [draft, setDraft] = useState(null)
-  const inputCls = 'w-full text-sm rounded-lg px-3 py-2 text-white/85 placeholder-white/25 outline-none border bg-white/5 border-white/10 focus:border-teal-400/40 transition-colors'
+  const inputCls = accountInputCls
 
   const openNew = () => {
     setDraft({ id: `post-${Date.now()}`, title: '', author: '', date: new Date().toISOString(), body: '', tags: '' })
@@ -659,8 +664,8 @@ function BlogAdmin() {
   if (draft) {
     return (
       <div className="space-y-3">
-        <button onClick={closeEditor} className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white/70 transition-colors">← Tilbage til liste</button>
-        <h3 className="text-sm font-semibold text-white/70">{isNew ? 'Nyt indlæg' : 'Rediger indlæg'}</h3>
+        <button onClick={closeEditor} className="flex items-center gap-1.5 text-xs text-inherit hover:text-inherit transition-colors">← Tilbage til liste</button>
+        <h3 className="text-sm font-semibold text-inherit">{isNew ? 'Nyt indlæg' : 'Rediger indlæg'}</h3>
         <input className={inputCls} value={draft.title} onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))} placeholder="Titel" />
         <div className="grid grid-cols-2 gap-2">
           <input className={inputCls} value={draft.author} onChange={(e) => setDraft((d) => ({ ...d, author: e.target.value }))} placeholder="Forfatter" />
@@ -677,15 +682,15 @@ function BlogAdmin() {
 
         {/* Image */}
         <div className="space-y-2">
-          <label className="text-[10px] text-white/40 uppercase tracking-widest">Billede (valgfrit)</label>
+          <label className="text-[10px] uppercase tracking-widest" style={{ color: WL.textSoft }}>Billede (valgfrit)</label>
           <label
             className="flex items-center gap-3 cursor-pointer px-3 py-2.5 rounded-xl border border-dashed transition-colors hover:border-teal-500/40 hover:bg-teal-500/5"
             style={{ borderColor: 'rgba(255,255,255,0.15)' }}
           >
             <span className="text-xl">📁</span>
             <div>
-              <div className="text-sm text-white/70">Upload billede</div>
-              <div className="text-[10px] text-white/30">PNG, JPG, WebP</div>
+              <div className="text-sm" style={{ color: WL.textMuted }}>Upload billede</div>
+              <div className="text-[10px]" style={{ color: WL.textSoft }}>PNG, JPG, WebP</div>
             </div>
             <input
               type="file"
@@ -703,7 +708,7 @@ function BlogAdmin() {
           </label>
           <div className="flex items-center gap-2">
             <div className="flex-1 h-px bg-white/10" />
-            <span className="text-[10px] text-white/25">eller indsæt URL</span>
+            <span className="text-[10px] text-inherit">eller indsæt URL</span>
             <div className="flex-1 h-px bg-white/10" />
           </div>
           <input
@@ -736,7 +741,7 @@ function BlogAdmin() {
             className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-all disabled:opacity-40"
             style={{ background: 'rgba(52,211,153,0.2)', border: '1px solid rgba(52,211,153,0.4)' }}
           >Udgiv</button>
-          <button onClick={closeEditor} className="px-4 py-2.5 rounded-xl text-sm text-white/40 border border-white/10 transition-colors">Annuller</button>
+          <button onClick={closeEditor} className="px-4 py-2.5 rounded-xl text-sm text-inherit border transition-colors" style={{ borderColor: WL.borderLight }}>Annuller</button>
         </div>
       </div>
     )
@@ -744,24 +749,24 @@ function BlogAdmin() {
 
   return (
     <div className="space-y-3">
-      <p className="text-white/35 text-xs leading-relaxed">
+      <p className="text-xs leading-relaxed" style={{ color: WL.textMuted }}>
         Medlemmer skriver indlæg via Login-noden. Her kan admin moderere alle opslag.
       </p>
       {sorted.length === 0 && (
-        <p className="text-white/22 text-xs px-1">Ingen indlæg endnu.</p>
+        <p className="text-inherit text-xs px-1">Ingen indlæg endnu.</p>
       )}
       {sorted.map((post) => (
         <div
           key={post.id}
           className="flex items-start gap-3 px-3 py-3 rounded-xl"
-          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}
+          style={{ background: 'rgba(255,255,255,0.72)', border: `1px solid ${WL.borderLight}` }}
         >
           <div className="flex-1 min-w-0">
-            <div className="text-sm text-white/80 font-medium leading-snug truncate">{post.title}</div>
-            <div className="text-[10px] text-white/30 mt-0.5">{post.author} · {post.date ? new Date(post.date).toLocaleDateString('da-DK') : ''}</div>
+            <div className="text-sm text-inherit font-medium leading-snug truncate">{post.title}</div>
+            <div className="text-[10px] text-inherit mt-0.5">{post.author} · {post.date ? new Date(post.date).toLocaleDateString('da-DK') : ''}</div>
           </div>
-          <button onClick={() => openEdit(post)} className="text-white/25 hover:text-white/60 transition-colors text-sm px-1 flex-shrink-0">✏</button>
-          <button onClick={() => { if (window.confirm('Slet indlæg?')) deleteBlogPost(post.id) }} className="text-white/20 hover:text-red-400 transition-colors text-base leading-none flex-shrink-0">×</button>
+          <button onClick={() => openEdit(post)} className="hover:opacity-80 transition-colors text-sm px-1 flex-shrink-0" style={{ color: WL.textMuted }}>✏</button>
+          <button onClick={() => { if (window.confirm('Slet indlæg?')) deleteBlogPost(post.id) }} className="hover:text-red-500 transition-colors text-base leading-none flex-shrink-0" style={{ color: WL.textSoft }}>×</button>
         </div>
       ))}
 
@@ -773,7 +778,8 @@ function BlogAdmin() {
 
       <button
         onClick={() => { if (window.confirm('Nulstil blog til standard?')) resetBlog() }}
-        className="w-full py-2 rounded-xl text-xs text-white/22 hover:text-white/45 border border-white/8 transition-colors"
+        className="w-full py-2 rounded-xl text-xs border transition-colors"
+        style={{ color: WL.textMuted, borderColor: WL.borderLight }}
       >↺ Nulstil blog</button>
     </div>
   )
@@ -783,8 +789,8 @@ function StatsAdmin() {
   const { stats, updateStats, resetStats } = useStore()
   const [local, setLocal] = useState(stats)
 
-  const inputCls = 'w-full text-sm rounded-lg px-3 py-2 text-white/85 placeholder-white/25 outline-none border bg-white/5 border-white/10 focus:border-yellow-400/40 transition-colors'
-  const labelCls = 'block text-xs text-white/40 mb-1'
+  const inputCls = accountInputCls
+  const labelCls = accountLabelCls
 
   const handleChange = (id, field, val) => {
     setLocal((prev) => prev.map((s) => s.id === id ? { ...s, [field]: val } : s))
@@ -811,13 +817,13 @@ function StatsAdmin() {
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-white/30">Vises som en tæller-bar i bunden af skærmen (synlig for alle besøgende).</p>
+      <p className="text-xs text-inherit">Vises som en tæller-bar i bunden af skærmen (synlig for alle besøgende).</p>
       <div className="space-y-3">
         {local.map((stat) => (
           <div key={stat.id} className="rounded-xl p-3 space-y-2" style={{ background: 'rgba(255,200,80,0.06)', border: '1px solid rgba(255,200,80,0.12)' }}>
             <div className="flex items-center justify-between mb-1">
               <span className="text-xs font-semibold" style={{ color: '#f0c070' }}>{stat.label || 'Tæller'}</span>
-              <button onClick={() => removeStat(stat.id)} className="text-white/20 hover:text-red-400 text-sm transition-colors">×</button>
+              <button onClick={() => removeStat(stat.id)} className="hover:text-red-500 text-sm transition-colors" style={{ color: WL.textSoft }}>×</button>
             </div>
             <div className="grid grid-cols-3 gap-2">
               <div className="col-span-2">
@@ -842,7 +848,7 @@ function StatsAdmin() {
       <button onClick={save} className="w-full py-2 rounded-xl text-xs font-semibold text-white/90 transition-all" style={{ background: 'rgba(74,222,128,0.15)', border: '1px solid rgba(74,222,128,0.3)' }}>
         💾 Gem tæller
       </button>
-      <button onClick={reset} className="w-full py-2 rounded-xl text-xs text-white/30 hover:text-white/60 transition-colors">↺ Nulstil tæller</button>
+      <button onClick={reset} className="w-full py-2 rounded-xl text-xs text-inherit hover:opacity-80 transition-colors">↺ Nulstil tæller</button>
     </div>
   )
 }
@@ -851,7 +857,7 @@ function StatsAdmin() {
 function DonationAdmin() {
   const { donationConfig, setDonationConfig, resetDonationConfig } = useStore()
   const [local, setLocal] = useState(donationConfig)
-  const inputCls = 'w-full text-sm rounded-lg px-3 py-2 text-white/85 placeholder-white/25 outline-none border bg-white/5 border-white/10 focus:border-pink-400/40 transition-colors'
+  const inputCls = accountInputCls
 
   // Keep local in sync if store changes externally
   useEffect(() => { setLocal(donationConfig) }, [donationConfig])
@@ -870,11 +876,11 @@ function DonationAdmin() {
 
   return (
     <div className="space-y-4">
-      <div className="text-white/50 text-[11px] uppercase tracking-widest font-semibold">💳 Betalingsinfo</div>
+      <div className="text-[11px] uppercase tracking-widest font-semibold" style={{ color: WL.textSoft }}>💳 Betalingsinfo</div>
 
       {/* MobilePay number */}
       <div>
-        <label className="block text-white/50 text-xs mb-1">MobilePay nummer</label>
+        <label className="block text-xs mb-1" style={{ color: WL.textSoft }}>MobilePay nummer</label>
         <input
           className={inputCls}
           placeholder="f.eks. 12345"
@@ -885,7 +891,7 @@ function DonationAdmin() {
 
       {/* Donation link */}
       <div>
-        <label className="block text-white/50 text-xs mb-1">Betalingslink (MobilePay / Swish / andet)</label>
+        <label className="block text-xs mb-1" style={{ color: WL.textSoft }}>Betalingslink (MobilePay / Swish / andet)</label>
         <input
           className={inputCls}
           placeholder="https://mobilepay.dk/..."
@@ -896,7 +902,7 @@ function DonationAdmin() {
 
       {/* QR code */}
       <div>
-        <label className="block text-white/50 text-xs mb-1">QR-kode URL</label>
+        <label className="block text-xs mb-1" style={{ color: WL.textSoft }}>QR-kode URL</label>
         <input
           className={inputCls}
           placeholder="https://... eller upload herunder"
@@ -905,16 +911,16 @@ function DonationAdmin() {
         />
       </div>
       <div>
-        <label className="block text-white/50 text-xs mb-1">Upload QR-billede</label>
+        <label className="block text-xs mb-1" style={{ color: WL.textSoft }}>Upload QR-billede</label>
         <input type="file" accept="image/*" onChange={handleQrUpload}
-          className="w-full text-xs text-white/50 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-white/10 file:text-white/70 hover:file:bg-white/20 cursor-pointer" />
+          className="w-full text-xs text-inherit file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-white/80 file:text-inherit hover:file:bg-white/20 cursor-pointer" />
       </div>
 
       {/* Preview */}
       {local.qrImageUrl && (
         <div className="flex flex-col items-center gap-2 py-3">
-          <div className="text-white/40 text-xs">Forhåndsvisning</div>
-          <img src={local.qrImageUrl} alt="QR preview" className="w-36 h-36 object-contain rounded-xl border border-white/10" />
+          <div className="text-xs" style={{ color: WL.textSoft }}>Forhåndsvisning</div>
+          <img src={local.qrImageUrl} alt="QR preview" className="w-36 h-36 object-contain rounded-xl border " />
         </div>
       )}
 
@@ -925,8 +931,8 @@ function DonationAdmin() {
           style={{ background: 'rgba(236,72,153,0.25)', border: '1px solid rgba(236,72,153,0.4)', color: '#f9a8d4' }}
         >💾 Gem</button>
         <button onClick={() => { if (window.confirm('Nulstil betalingsinfo?')) { resetDonationConfig(); setLocal({ mobilepay: '', link: '', qrImageUrl: '' }) } }}
-          className="px-3 py-2 rounded-xl text-xs font-semibold text-white/30 hover:text-white/60 transition-colors"
-          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+          className="px-3 py-2 rounded-xl text-xs font-semibold text-inherit hover:opacity-80 transition-colors"
+          style={{ background: 'rgba(255,255,255,0.72)', border: `1px solid ${WL.borderLight}` }}
         >↺ Nulstil</button>
       </div>
     </div>
@@ -962,7 +968,7 @@ function PublishAdmin() {
   const [status, setStatus] = useState('idle') // idle | loading | ok | error
   const [errMsg, setErrMsg] = useState('')
   const [showToken, setShowToken] = useState(false)
-  const inputCls = 'w-full text-sm rounded-lg px-3 py-2 text-white/85 placeholder-white/25 outline-none border bg-white/5 border-white/10 focus:border-green-400/40 transition-colors'
+  const inputCls = accountInputCls
 
   const save = (patch) => setGithubSettings(patch)
 
@@ -982,16 +988,16 @@ function PublishAdmin() {
 
   return (
     <div className="space-y-5">
-      <div className="text-white/50 text-[11px] uppercase tracking-widest font-semibold">🚀 Publicér Live</div>
+      <div className="text-[11px] uppercase tracking-widest font-semibold" style={{ color: WL.textSoft }}>🚀 Publicér Live</div>
 
       {/* Info box */}
-      <div className="rounded-xl p-3 text-xs text-white/50 space-y-1" style={{ background: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.15)' }}>
+      <div className="rounded-xl p-3 text-xs text-inherit space-y-1" style={{ background: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.15)' }}>
         <p>Gem dine ændringer direkte til GitHub. Siden genbygges automatisk (~1 min), og alle brugere ser de nye indstillinger.</p>
       </div>
 
       {/* Token */}
       <div>
-        <label className="block text-white/50 text-xs mb-1">
+        <label className="block text-xs mb-1" style={{ color: WL.textSoft }}>
           GitHub Personal Access Token
           <a href="https://github.com/settings/tokens/new?scopes=repo&description=WL+Admin" target="_blank" rel="noopener noreferrer" className="ml-2 text-green-400/70 hover:text-green-400 underline">Opret token ↗</a>
         </label>
@@ -1003,24 +1009,24 @@ function PublishAdmin() {
             onChange={(e) => save({ token: e.target.value })}
             placeholder="ghp_xxxxxxxxxxxx"
           />
-          <button onClick={() => setShowToken(s => !s)} className="px-2 text-white/30 hover:text-white/60 text-xs">{showToken ? '🙈' : '👁'}</button>
+          <button onClick={() => setShowToken(s => !s)} className="px-2 text-inherit hover:opacity-80 text-xs">{showToken ? '🙈' : '👁'}</button>
         </div>
-        <p className="text-[10px] text-white/25 mt-1">Gemmes i databasen. Vælg scope: <code className="text-white/40">repo</code> (eller <code className="text-white/40">contents:write</code> for fine-grained).</p>
+        <p className="text-[10px] text-inherit mt-1">Gemmes i databasen. Vælg scope: <code className="text-inherit">repo</code> (eller <code className="text-inherit">contents:write</code> for fine-grained).</p>
       </div>
 
       {/* Repo settings */}
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className="block text-white/50 text-xs mb-1">GitHub bruger / org</label>
+          <label className="block text-xs mb-1" style={{ color: WL.textSoft }}>GitHub bruger / org</label>
           <input className={inputCls} value={githubSettings.owner} onChange={(e) => save({ owner: e.target.value })} placeholder="filiptom888-lgtm" />
         </div>
         <div>
-          <label className="block text-white/50 text-xs mb-1">Repository navn</label>
+          <label className="block text-xs mb-1" style={{ color: WL.textSoft }}>Repository navn</label>
           <input className={inputCls} value={githubSettings.repo} onChange={(e) => save({ repo: e.target.value })} placeholder="Weeleafv2" />
         </div>
       </div>
       <div>
-        <label className="block text-white/50 text-xs mb-1">Branch</label>
+        <label className="block text-xs mb-1" style={{ color: WL.textSoft }}>Branch</label>
         <input className={inputCls} value={githubSettings.branch} onChange={(e) => save({ branch: e.target.value })} placeholder="main" />
       </div>
 
@@ -1037,6 +1043,224 @@ function PublishAdmin() {
       {status === 'error' && errMsg && (
         <p className="text-xs text-red-400/80 break-all">{errMsg}</p>
       )}
+    </div>
+  )
+}
+
+/* ─── Users admin ───────────────────────────────────────────────────── */
+function formatUserDate(iso) {
+  try {
+    return new Date(iso).toLocaleDateString('da-DK', { day: 'numeric', month: 'short', year: 'numeric' })
+  } catch {
+    return '—'
+  }
+}
+
+function UsersAdmin() {
+  const currentUser = useStore((s) => s.currentUser)
+  const [users, setUsers] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [sortKey, setSortKey] = useState('email')
+  const [sortDir, setSortDir] = useState('asc')
+  const [filter, setFilter] = useState('')
+  const [busyId, setBusyId] = useState(null)
+
+  const loadUsers = useCallback(async () => {
+    setLoading(true)
+    setError('')
+    const res = await api.fetchUsers()
+    if (res.ok) setUsers(res.users || [])
+    else setError(res.error || 'Kunne ikke hente brugere')
+    setLoading(false)
+  }, [])
+
+  useEffect(() => {
+    loadUsers()
+  }, [loadUsers])
+
+  const toggleSort = (key) => {
+    if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    else {
+      setSortKey(key)
+      setSortDir('asc')
+    }
+  }
+
+  const sortedUsers = useMemo(() => {
+    const q = filter.trim().toLowerCase()
+    let list = users
+    if (q) {
+      list = list.filter(
+        (u) =>
+          u.email.toLowerCase().includes(q) ||
+          u.name.toLowerCase().includes(q) ||
+          u.role.toLowerCase().includes(q)
+      )
+    }
+    return [...list].sort((a, b) => {
+      let av = a[sortKey]
+      let bv = b[sortKey]
+      if (sortKey === 'createdAt') {
+        av = new Date(av || 0).getTime()
+        bv = new Date(bv || 0).getTime()
+      } else {
+        av = (av || '').toString().toLowerCase()
+        bv = (bv || '').toString().toLowerCase()
+      }
+      if (av < bv) return sortDir === 'asc' ? -1 : 1
+      if (av > bv) return sortDir === 'asc' ? 1 : -1
+      return 0
+    })
+  }, [users, sortKey, sortDir, filter])
+
+  const sortIndicator = (key) => {
+    if (sortKey !== key) return ''
+    return sortDir === 'asc' ? ' ↑' : ' ↓'
+  }
+
+  const handleRoleChange = async (user, nextRole) => {
+    if (user.role === nextRole) return
+    const label = nextRole === 'admin' ? 'admin' : 'medlem'
+    if (!window.confirm(`Gør ${user.email} til ${label}?`)) return
+    setBusyId(user.id)
+    const res = await api.updateUserRole(user.id, nextRole)
+    setBusyId(null)
+    if (!res.ok) {
+      window.alert(res.error || 'Kunne ikke opdatere rolle')
+      return
+    }
+    setUsers((prev) => prev.map((u) => (u.id === user.id ? res.user : u)))
+  }
+
+  const thBtn =
+    'text-left text-[10px] uppercase tracking-wider font-semibold text-inherit hover:text-inherit transition-colors'
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <input
+          type="search"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          placeholder="Søg e-mail, navn eller rolle…"
+          className="flex-1 text-sm rounded-xl px-3 py-2 outline-none border bg-white/5  text-inherit placeholder-white/30 focus:border-green-400/40"
+        />
+        <button
+          type="button"
+          onClick={loadUsers}
+          className="text-xs px-3 py-2 rounded-xl font-semibold"
+          style={{ color: WL.green, border: `1px solid ${WL.border}`, background: 'rgba(255,255,255,0.75)' }}
+        >
+          ↻ Opdater
+        </button>
+      </div>
+
+      {loading && <p className="text-sm" style={{ color: WL.textSoft }}>Henter brugere…</p>}
+      {error && <p className="text-sm text-red-300">{error}</p>}
+
+      {!loading && !error && (
+        <div className="rounded-xl overflow-hidden border ">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[520px] text-sm">
+              <thead>
+                <tr style={{ background: 'rgba(255,255,255,0.8)' }}>
+                  <th className="px-3 py-2.5">
+                    <button type="button" className={thBtn} onClick={() => toggleSort('email')}>
+                      E-mail{sortIndicator('email')}
+                    </button>
+                  </th>
+                  <th className="px-3 py-2.5">
+                    <button type="button" className={thBtn} onClick={() => toggleSort('name')}>
+                      Navn{sortIndicator('name')}
+                    </button>
+                  </th>
+                  <th className="px-3 py-2.5">
+                    <button type="button" className={thBtn} onClick={() => toggleSort('role')}>
+                      Rolle{sortIndicator('role')}
+                    </button>
+                  </th>
+                  <th className="px-3 py-2.5 hidden md:table-cell">
+                    <button type="button" className={thBtn} onClick={() => toggleSort('createdAt')}>
+                      Oprettet{sortIndicator('createdAt')}
+                    </button>
+                  </th>
+                  <th className="px-3 py-2.5 text-[10px] uppercase tracking-wider font-semibold" style={{ color: WL.textSoft }}>
+                    Handling
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedUsers.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-3 py-8 text-center" style={{ color: WL.textSoft }}>
+                      Ingen brugere fundet
+                    </td>
+                  </tr>
+                ) : (
+                  sortedUsers.map((user) => {
+                    const isSelf = user.id === currentUser?.id
+                    const isAdmin = user.role === 'admin'
+                    return (
+                      <tr
+                        key={user.id}
+                        className="border-t "
+                        style={{ background: isSelf ? 'rgba(61,158,95,0.08)' : 'transparent' }}
+                      >
+                        <td className="px-3 py-2.5 text-inherit break-all">{user.email}</td>
+                        <td className="px-3 py-2.5 text-inherit">{user.name}</td>
+                        <td className="px-3 py-2.5">
+                          <span
+                            className="text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase"
+                            style={{
+                              background: isAdmin ? 'rgba(61,158,95,0.2)' : 'rgba(255,255,255,0.08)',
+                              color: isAdmin ? '#86efac' : 'rgba(255,255,255,0.55)',
+                              border: `1px solid ${isAdmin ? 'rgba(61,158,95,0.35)' : 'rgba(255,255,255,0.12)'}`,
+                            }}
+                          >
+                            {isAdmin ? 'Admin' : 'Medlem'}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2.5 text-inherit text-xs hidden md:table-cell">
+                          {formatUserDate(user.createdAt)}
+                        </td>
+                        <td className="px-3 py-2.5">
+                          {isAdmin ? (
+                            <button
+                              type="button"
+                              disabled={busyId === user.id || isSelf}
+                              onClick={() => handleRoleChange(user, 'member')}
+                              className="text-[11px] px-2.5 py-1 rounded-lg disabled:opacity-40"
+                              style={{ color: WL.textMuted, border: `1px solid ${WL.borderLight}` }}
+                            >
+                              Fjern admin
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled={busyId === user.id}
+                              onClick={() => handleRoleChange(user, 'admin')}
+                              className="text-[11px] px-2.5 py-1 rounded-lg disabled:opacity-40"
+                              style={{ color: WL.green, border: '1px solid rgba(61,158,95,0.35)', background: 'rgba(61,158,95,0.12)' }}
+                            >
+                              Gør admin
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      <p className="text-xs" style={{ color: WL.textSoft }}>
+        {sortedUsers.length} bruger{sortedUsers.length === 1 ? '' : 'e'} vist
+        {filter.trim() ? ` (filtreret)` : ''}.
+      </p>
     </div>
   )
 }
@@ -1067,57 +1291,58 @@ export function AdminDashboard() {
     if (window.confirm('Delete this coin from the orbit?')) deleteCoin(id)
   }, [deleteCoin])
 
+  const exportConfig = () => {
+    const { coins: c, shopCategories, blogPosts, donationConfig } = useStore.getState()
+    const blob = new Blob([JSON.stringify({ coins: c, shopCategories, blogPosts, donationConfig }, null, 2)], {
+      type: 'application/json',
+    })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = 'wl-config.json'
+    a.click()
+    URL.revokeObjectURL(a.href)
+  }
+
   const pendingCount = pendingShopSubmissions.filter((s) => s.status === 'pending').length
   const editingCoin = editingId ? coins.find((c) => c.id === editingId) : null
 
   const tabs = [
-    { key: 'coins', label: '🌿 Nodes' },
-    { key: 'shop', label: '🛍️ Shop' },
-    { key: 'approvals', label: pendingCount ? `✅ Godkend (${pendingCount})` : '✅ Godkend' },
-    { key: 'blog', label: '📝 Blog' },
-    { key: 'donation', label: '💳 Give' },
-    { key: 'stats', label: '📊 Tæller' },
-    { key: 'publish', label: '🚀 Publicér' },
+    { key: 'coins', label: 'Nodes', icon: '🌿' },
+    { key: 'users', label: 'Brugere', icon: '👥' },
+    { key: 'shop', label: 'Shop', icon: '🛍️' },
+    { key: 'approvals', label: pendingCount ? `Godkend (${pendingCount})` : 'Godkend', icon: '✅' },
+    { key: 'blog', label: 'Blog', icon: '📝' },
+    { key: 'donation', label: 'Give', icon: '💳' },
+    { key: 'stats', label: 'Tæller', icon: '📊' },
+    { key: 'publish', label: 'Publicér', icon: '🚀' },
   ]
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <div className="flex gap-1.5 overflow-x-auto pb-3 flex-shrink-0">
-        {tabs.map(({ key, label }) => (
-          <button
-            key={key}
-            onClick={() => { setActiveTab(key); setEditingId(null) }}
-            className="flex-shrink-0 py-2 px-3 rounded-xl text-xs font-semibold transition-all"
-            style={{
-              background: activeTab === key ? 'rgba(61, 158, 95, 0.22)' : 'rgba(255,255,255,0.08)',
-              border: `1px solid ${activeTab === key ? WL.greenBright : 'rgba(255,255,255,0.12)'}`,
-              color: activeTab === key ? '#86efac' : 'rgba(255,255,255,0.65)',
-            }}
-          >
-            {label}
-          </button>
-        ))}
+      <div className="rounded-2xl p-4 mb-4 flex-shrink-0" style={accountCardStyle}>
+        <h2 className="text-lg font-bold" style={{ color: WL.text }}>Admin panel</h2>
+        <p className="text-xs mt-1 leading-relaxed" style={{ color: WL.textMuted }}>
+          Administrer nodes, brugere, shop og indhold for hele WeeLeaf.
+        </p>
+        <div className="flex gap-2 mt-3">
+          <div className="flex-1 py-2 rounded-xl text-center" style={{ background: 'rgba(255,255,255,0.65)' }}>
+            <div className="text-lg font-bold" style={{ color: WL.text }}>{coins.length}</div>
+            <div className="text-[9px] uppercase tracking-wider" style={{ color: WL.textSoft }}>Nodes</div>
+          </div>
+          <div className="flex-1 py-2 rounded-xl text-center" style={{ background: 'rgba(255,255,255,0.65)' }}>
+            <div className="text-lg font-bold" style={{ color: pendingCount ? WL.gold : WL.text }}>{pendingCount}</div>
+            <div className="text-[9px] uppercase tracking-wider" style={{ color: WL.textSoft }}>Afventer</div>
+          </div>
+        </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto min-h-0 space-y-5 pr-1">
-        <button
-          type="button"
-          onClick={() => {
-            const { coins: c, shopCategories, blogPosts, donationConfig } = useStore.getState()
-            const blob = new Blob([JSON.stringify({ coins: c, shopCategories, blogPosts, donationConfig }, null, 2)], { type: 'application/json' })
-            const a = document.createElement('a')
-            a.href = URL.createObjectURL(blob)
-            a.download = 'wl-config.json'
-            a.click()
-            URL.revokeObjectURL(a.href)
-          }}
-          className="text-xs px-3 py-1.5 rounded-lg"
-          style={{ color: '#86efac', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.06)' }}
-        >
-          📤 Eksporter config
-        </button>
+      <div className="pb-3 flex-shrink-0">
+        <AccountTabBar tabs={tabs} active={activeTab} onChange={(key) => { setActiveTab(key); setEditingId(null) }} />
+      </div>
 
+      <div className="flex-1 overflow-y-auto min-h-0 space-y-4 pb-2">
         {activeTab === 'shop' && <ShopAdmin />}
+        {activeTab === 'users' && <UsersAdmin />}
         {activeTab === 'approvals' && <PendingShopAdmin />}
         {activeTab === 'blog' && <BlogAdmin />}
         {activeTab === 'stats' && <StatsAdmin />}
@@ -1141,30 +1366,40 @@ export function AdminDashboard() {
                     />
                   ))}
                 </div>
-                <div className="flex gap-2 pt-2">
+                <div className="flex flex-wrap gap-2 pt-2">
                   <button
+                    type="button"
                     onClick={handleAdd}
-                    className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
-                    style={{ background: 'rgba(61,158,95,0.2)', border: `1px solid ${WL.greenBright}`, color: '#86efac' }}
+                    className="flex-1 min-w-[140px] py-2.5 rounded-xl text-sm font-semibold"
+                    style={{ background: 'rgba(61,158,95,0.2)', border: `1px solid ${WL.greenBright}`, color: WL.green }}
                   >
                     + Add Coin
                   </button>
                   <button
+                    type="button"
                     onClick={() => { if (window.confirm('Reset all coins to defaults?')) { resetCoins(); setEditingId(null) } }}
                     className="px-4 py-2.5 rounded-xl text-sm"
-                    style={{ color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.15)' }}
+                    style={{ color: WL.textMuted, border: `1px solid ${WL.borderLight}` }}
                   >
                     ↺
                   </button>
+                  <button
+                    type="button"
+                    onClick={exportConfig}
+                    className="px-4 py-2.5 rounded-xl text-xs font-semibold"
+                    style={{ color: WL.green, border: `1px solid ${WL.border}`, background: 'rgba(255,255,255,0.75)' }}
+                  >
+                    📤 Eksporter
+                  </button>
                 </div>
-                <p className="text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                <p className="text-xs" style={{ color: WL.textMuted }}>
                   Ændringer gemmes i databasen og vises for alle besøgende.
                 </p>
               </>
             )}
             {editingId && editingCoin && (
               <>
-                <button type="button" onClick={() => setEditingId(null)} className="text-xs" style={{ color: 'rgba(255,255,255,0.6)' }}>
+                <button type="button" onClick={() => setEditingId(null)} className="text-xs" style={{ color: WL.textMuted }}>
                   ← Tilbage til liste
                 </button>
                 <CoinEditor coin={editingCoin} onSave={handleSave} onClose={() => setEditingId(null)} />

@@ -170,4 +170,7 @@ export const api = {
 
   updateUserRole: (userId, role) =>
     request(`/users/${encodeURIComponent(userId)}/role`, { method: 'PUT', body: { role }, auth: true }),
+
+  deleteUser: (userId) =>
+    request(`/users/${encodeURIComponent(userId)}`, { method: 'DELETE', auth: true }),
 }

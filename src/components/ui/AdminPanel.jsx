@@ -5,6 +5,7 @@ import { api } from '../../api/wlApi'
 import { uploadCoinImageFile } from '../../utils/coinImageUpload'
 import { WL, accountInputCls, accountInputStyle, accountCardStyle, accountLabelCls } from '../../styles/modalTheme'
 import AccountTabBar from './AccountTabBar'
+import UserAvatar from './UserAvatar'
 
 const LOCKED_COIN_IDS = ['shop', 'member']
 const inputCls = accountInputCls
@@ -1057,13 +1058,15 @@ function formatUserDate(iso) {
 }
 
 function UsersAdmin() {
+  const PAGE_SIZE = 20
   const currentUser = useStore((s) => s.currentUser)
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [sortKey, setSortKey] = useState('email')
-  const [sortDir, setSortDir] = useState('asc')
+  const [sortKey, setSortKey] = useState('createdAt')
+  const [sortDir, setSortDir] = useState('desc')
   const [filter, setFilter] = useState('')
+  const [page, setPage] = useState(1)
   const [busyId, setBusyId] = useState(null)
 
   const loadUsers = useCallback(async () => {
@@ -1079,11 +1082,15 @@ function UsersAdmin() {
     loadUsers()
   }, [loadUsers])
 
+  useEffect(() => {
+    setPage(1)
+  }, [filter, sortKey, sortDir])
+
   const toggleSort = (key) => {
     if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
     else {
       setSortKey(key)
-      setSortDir('asc')
+      setSortDir(key === 'createdAt' ? 'desc' : 'asc')
     }
   }
 
@@ -1114,6 +1121,12 @@ function UsersAdmin() {
     })
   }, [users, sortKey, sortDir, filter])
 
+  const totalPages = Math.max(1, Math.ceil(sortedUsers.length / PAGE_SIZE))
+  const safePage = Math.min(page, totalPages)
+  const pageUsers = sortedUsers.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
+  const rangeStart = sortedUsers.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1
+  const rangeEnd = Math.min(safePage * PAGE_SIZE, sortedUsers.length)
+
   const sortIndicator = (key) => {
     if (sortKey !== key) return ''
     return sortDir === 'asc' ? ' ↑' : ' ↓'
@@ -1133,8 +1146,21 @@ function UsersAdmin() {
     setUsers((prev) => prev.map((u) => (u.id === user.id ? res.user : u)))
   }
 
+  const handleDelete = async (user) => {
+    if (!window.confirm(`Slet brugeren ${user.email}?\n\nIndlæg bevares, men kobles fra kontoen. Dette kan ikke fortrydes.`)) return
+    setBusyId(user.id)
+    const res = await api.deleteUser(user.id)
+    setBusyId(null)
+    if (!res.ok) {
+      window.alert(res.error || 'Kunne ikke slette bruger')
+      return
+    }
+    setUsers((prev) => prev.filter((u) => u.id !== user.id))
+  }
+
   const thBtn =
-    'text-left text-[10px] uppercase tracking-wider font-semibold text-inherit hover:text-inherit transition-colors'
+    'text-left text-[10px] uppercase tracking-wider font-semibold transition-colors'
+  const thStyle = { color: WL.textSoft }
 
   return (
     <div className="space-y-4">
@@ -1144,7 +1170,8 @@ function UsersAdmin() {
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           placeholder="Søg e-mail, navn eller rolle…"
-          className="flex-1 text-sm rounded-xl px-3 py-2 outline-none border bg-white/5  text-inherit placeholder-white/30 focus:border-green-400/40"
+          className={`flex-1 ${inputCls}`}
+          style={inputStyle}
         />
         <button
           type="button"
@@ -1157,95 +1184,119 @@ function UsersAdmin() {
       </div>
 
       {loading && <p className="text-sm" style={{ color: WL.textSoft }}>Henter brugere…</p>}
-      {error && <p className="text-sm text-red-300">{error}</p>}
+      {error && <p className="text-sm" style={{ color: '#b91c1c' }}>{error}</p>}
 
       {!loading && !error && (
-        <div className="rounded-xl overflow-hidden border ">
+        <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${WL.borderLight}` }}>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[520px] text-sm">
+            <table className="w-full min-w-[640px] text-sm">
               <thead>
                 <tr style={{ background: 'rgba(255,255,255,0.8)' }}>
+                  <th className="px-3 py-2.5 w-12" style={thStyle}>Avatar</th>
                   <th className="px-3 py-2.5">
-                    <button type="button" className={thBtn} onClick={() => toggleSort('email')}>
-                      E-mail{sortIndicator('email')}
-                    </button>
-                  </th>
-                  <th className="px-3 py-2.5">
-                    <button type="button" className={thBtn} onClick={() => toggleSort('name')}>
+                    <button type="button" className={thBtn} style={thStyle} onClick={() => toggleSort('name')}>
                       Navn{sortIndicator('name')}
                     </button>
                   </th>
                   <th className="px-3 py-2.5">
-                    <button type="button" className={thBtn} onClick={() => toggleSort('role')}>
+                    <button type="button" className={thBtn} style={thStyle} onClick={() => toggleSort('email')}>
+                      E-mail{sortIndicator('email')}
+                    </button>
+                  </th>
+                  <th className="px-3 py-2.5">
+                    <button type="button" className={thBtn} style={thStyle} onClick={() => toggleSort('role')}>
                       Rolle{sortIndicator('role')}
                     </button>
                   </th>
-                  <th className="px-3 py-2.5 hidden md:table-cell">
-                    <button type="button" className={thBtn} onClick={() => toggleSort('createdAt')}>
+                  <th className="px-3 py-2.5">
+                    <button type="button" className={thBtn} style={thStyle} onClick={() => toggleSort('createdAt')}>
                       Oprettet{sortIndicator('createdAt')}
                     </button>
                   </th>
-                  <th className="px-3 py-2.5 text-[10px] uppercase tracking-wider font-semibold" style={{ color: WL.textSoft }}>
+                  <th className="px-3 py-2.5 text-[10px] uppercase tracking-wider font-semibold" style={thStyle}>
                     Handling
                   </th>
                 </tr>
               </thead>
               <tbody>
-                {sortedUsers.length === 0 ? (
+                {pageUsers.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-3 py-8 text-center" style={{ color: WL.textSoft }}>
+                    <td colSpan={6} className="px-3 py-8 text-center" style={{ color: WL.textSoft }}>
                       Ingen brugere fundet
                     </td>
                   </tr>
                 ) : (
-                  sortedUsers.map((user) => {
+                  pageUsers.map((user) => {
                     const isSelf = user.id === currentUser?.id
                     const isAdmin = user.role === 'admin'
                     return (
                       <tr
                         key={user.id}
-                        className="border-t "
-                        style={{ background: isSelf ? 'rgba(61,158,95,0.08)' : 'transparent' }}
+                        className="border-t"
+                        style={{
+                          borderColor: WL.borderLight,
+                          background: isSelf ? 'rgba(61,158,95,0.08)' : 'rgba(255,255,255,0.45)',
+                        }}
                       >
-                        <td className="px-3 py-2.5 text-inherit break-all">{user.email}</td>
-                        <td className="px-3 py-2.5 text-inherit">{user.name}</td>
+                        <td className="px-3 py-2.5">
+                          <UserAvatar
+                            name={user.name}
+                            avatarId={user.avatarId}
+                            avatarUrl={user.avatarUrl}
+                            size={36}
+                            rounded="square"
+                          />
+                        </td>
+                        <td className="px-3 py-2.5 font-medium" style={{ color: WL.text }}>{user.name}</td>
+                        <td className="px-3 py-2.5 break-all" style={{ color: WL.textMuted }}>{user.email}</td>
                         <td className="px-3 py-2.5">
                           <span
                             className="text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase"
                             style={{
-                              background: isAdmin ? 'rgba(61,158,95,0.2)' : 'rgba(255,255,255,0.08)',
-                              color: isAdmin ? '#86efac' : 'rgba(255,255,255,0.55)',
-                              border: `1px solid ${isAdmin ? 'rgba(61,158,95,0.35)' : 'rgba(255,255,255,0.12)'}`,
+                              background: isAdmin ? 'rgba(61,158,95,0.15)' : 'rgba(255,255,255,0.7)',
+                              color: isAdmin ? WL.green : WL.textMuted,
+                              border: `1px solid ${isAdmin ? 'rgba(61,158,95,0.35)' : WL.borderLight}`,
                             }}
                           >
                             {isAdmin ? 'Admin' : 'Medlem'}
                           </span>
                         </td>
-                        <td className="px-3 py-2.5 text-inherit text-xs hidden md:table-cell">
+                        <td className="px-3 py-2.5 text-xs whitespace-nowrap" style={{ color: WL.textMuted }}>
                           {formatUserDate(user.createdAt)}
                         </td>
                         <td className="px-3 py-2.5">
-                          {isAdmin ? (
+                          <div className="flex flex-wrap gap-1.5">
+                            {isAdmin ? (
+                              <button
+                                type="button"
+                                disabled={busyId === user.id || isSelf}
+                                onClick={() => handleRoleChange(user, 'member')}
+                                className="text-[11px] px-2.5 py-1 rounded-lg disabled:opacity-40"
+                                style={{ color: WL.textMuted, border: `1px solid ${WL.borderLight}` }}
+                              >
+                                Fjern admin
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                disabled={busyId === user.id}
+                                onClick={() => handleRoleChange(user, 'admin')}
+                                className="text-[11px] px-2.5 py-1 rounded-lg disabled:opacity-40"
+                                style={{ color: WL.green, border: '1px solid rgba(61,158,95,0.35)', background: 'rgba(61,158,95,0.12)' }}
+                              >
+                                Gør admin
+                              </button>
+                            )}
                             <button
                               type="button"
                               disabled={busyId === user.id || isSelf}
-                              onClick={() => handleRoleChange(user, 'member')}
+                              onClick={() => handleDelete(user)}
                               className="text-[11px] px-2.5 py-1 rounded-lg disabled:opacity-40"
-                              style={{ color: WL.textMuted, border: `1px solid ${WL.borderLight}` }}
+                              style={{ color: '#b91c1c', border: '1px solid rgba(220,38,38,0.25)', background: 'rgba(220,38,38,0.06)' }}
                             >
-                              Fjern admin
+                              Slet
                             </button>
-                          ) : (
-                            <button
-                              type="button"
-                              disabled={busyId === user.id}
-                              onClick={() => handleRoleChange(user, 'admin')}
-                              className="text-[11px] px-2.5 py-1 rounded-lg disabled:opacity-40"
-                              style={{ color: WL.green, border: '1px solid rgba(61,158,95,0.35)', background: 'rgba(61,158,95,0.12)' }}
-                            >
-                              Gør admin
-                            </button>
-                          )}
+                          </div>
                         </td>
                       </tr>
                     )
@@ -1257,10 +1308,37 @@ function UsersAdmin() {
         </div>
       )}
 
-      <p className="text-xs" style={{ color: WL.textSoft }}>
-        {sortedUsers.length} bruger{sortedUsers.length === 1 ? '' : 'e'} vist
-        {filter.trim() ? ` (filtreret)` : ''}.
-      </p>
+      {!loading && !error && sortedUsers.length > 0 && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <p className="text-xs" style={{ color: WL.textSoft }}>
+            Viser {rangeStart}–{rangeEnd} af {sortedUsers.length} bruger{sortedUsers.length === 1 ? '' : 'e'}
+            {filter.trim() ? ' (filtreret)' : ''}
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={safePage <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              className="text-xs px-3 py-1.5 rounded-lg disabled:opacity-40"
+              style={{ color: WL.textMuted, border: `1px solid ${WL.borderLight}` }}
+            >
+              ← Forrige
+            </button>
+            <span className="text-xs tabular-nums" style={{ color: WL.textSoft }}>
+              Side {safePage} / {totalPages}
+            </span>
+            <button
+              type="button"
+              disabled={safePage >= totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              className="text-xs px-3 py-1.5 rounded-lg disabled:opacity-40"
+              style={{ color: WL.textMuted, border: `1px solid ${WL.borderLight}` }}
+            >
+              Næste →
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

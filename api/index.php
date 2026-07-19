@@ -446,6 +446,31 @@ try {
             wl_ok(['user' => wl_user_payload($stmt->fetch())]);
         })(),
 
+        preg_match('#^/users/([^/]+)$#', $uri, $m) && $method === 'DELETE' => (function () use ($m) {
+            $admin = wl_require_auth(true);
+            $userId = $m[1];
+            if ($userId === $admin['id']) {
+                wl_error('Du kan ikke slette din egen konto her.');
+            }
+            $stmt = wl_pdo()->prepare('SELECT id, role, avatar_id FROM users WHERE id = :id LIMIT 1');
+            $stmt->execute(['id' => $userId]);
+            $target = $stmt->fetch();
+            if (!$target) {
+                wl_error('Bruger ikke fundet.', 404);
+            }
+            if ($target['role'] === 'admin') {
+                $count = (int) wl_pdo()->query("SELECT COUNT(*) FROM users WHERE role = 'admin'")->fetchColumn();
+                if ($count <= 1) {
+                    wl_error('Kan ikke slette den sidste admin.');
+                }
+            }
+            if (($target['avatar_id'] ?? '') === 'custom') {
+                wl_delete_user_avatar_file($userId);
+            }
+            wl_pdo()->prepare('DELETE FROM users WHERE id = :id')->execute(['id' => $userId]);
+            wl_ok();
+        })(),
+
         default => wl_error('Ikke fundet: ' . $uri, 404),
     };
 } catch (Throwable $e) {

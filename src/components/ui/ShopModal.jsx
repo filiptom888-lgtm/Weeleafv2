@@ -26,15 +26,15 @@ export default function ShopModal({ coin, onClose }) {
 
   return (
     <FullscreenShell
-      eyebrow="WeeLeaf Shop"
-      title={coin.content?.title || 'WL Shop'}
-      tagline={coin.content?.tagline}
       onClose={onClose}
       contentClassName="max-w-3xl"
     >
       <div className="rounded-2xl overflow-hidden" style={accountCardStyle}>
         {shopCategories.length > 0 && (
-          <div className="p-3 pb-0 border-b" style={{ borderColor: WL.borderLight }}>
+          <div className="p-4 pb-0 border-b" style={{ borderColor: WL.borderLight }}>
+            <h2 className="text-lg md:text-xl font-bold mb-3" style={{ color: WL.text }}>
+              {coin.content?.title || 'WL Shop'}
+            </h2>
             <AccountTabBar
               tabs={categoryTabs}
               active={activeCatId}

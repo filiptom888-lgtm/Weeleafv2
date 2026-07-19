@@ -3,30 +3,26 @@ import * as THREE from 'three'
 const COIN_TEX_SIZE = 256
 const cache = new Map()
 
-function textureFromBitmap(bitmap) {
-  const texture = new THREE.Texture(bitmap)
-  texture.colorSpace = THREE.SRGBColorSpace
-  texture.minFilter = THREE.LinearFilter
-  texture.magFilter = THREE.LinearFilter
-  texture.generateMipmaps = false
-  texture.needsUpdate = true
-  return texture
-}
-
-function textureFromCanvas(img) {
-  const max = COIN_TEX_SIZE
-  const w = img.naturalWidth || img.width
-  const h = img.naturalHeight || img.height
-  const scale = Math.min(1, max / Math.max(w, h, 1))
+/**
+ * Rasterize to canvas so orientation matches THREE.TextureLoader (flipY true).
+ * Direct ImageBitmap → Texture often renders upside-down on coin faces.
+ */
+function textureFromImageSource(img) {
+  const w = img.width || img.naturalWidth
+  const h = img.height || img.naturalHeight
+  const scale = Math.min(1, COIN_TEX_SIZE / Math.max(w, h, 1))
   const cw = Math.max(1, Math.round(w * scale))
   const ch = Math.max(1, Math.round(h * scale))
+
   const canvas = document.createElement('canvas')
   canvas.width = cw
   canvas.height = ch
   const ctx = canvas.getContext('2d')
   ctx.drawImage(img, 0, 0, cw, ch)
+
   const texture = new THREE.CanvasTexture(canvas)
   texture.colorSpace = THREE.SRGBColorSpace
+  texture.flipY = true
   texture.minFilter = THREE.LinearFilter
   texture.magFilter = THREE.LinearFilter
   texture.generateMipmaps = false
@@ -34,18 +30,17 @@ function textureFromCanvas(img) {
   return texture
 }
 
-async function decodeCoinImage(url) {
+async function loadImageSource(url) {
   const res = await fetch(url)
   const blob = await res.blob()
 
   if (typeof createImageBitmap === 'function') {
     try {
-      const bitmap = await createImageBitmap(blob, {
+      return await createImageBitmap(blob, {
         resizeWidth: COIN_TEX_SIZE,
         resizeHeight: COIN_TEX_SIZE,
         resizeQuality: 'high',
       })
-      return textureFromBitmap(bitmap)
     } catch {
       /* fall through */
     }
@@ -53,16 +48,22 @@ async function decodeCoinImage(url) {
 
   const objectUrl = URL.createObjectURL(blob)
   try {
-    const img = await new Promise((resolve, reject) => {
+    return await new Promise((resolve, reject) => {
       const el = new Image()
       el.onload = () => resolve(el)
       el.onerror = reject
       el.src = objectUrl
     })
-    return textureFromCanvas(img)
   } finally {
     URL.revokeObjectURL(objectUrl)
   }
+}
+
+async function decodeCoinImage(url) {
+  const source = await loadImageSource(url)
+  const texture = textureFromImageSource(source)
+  if (source.close) source.close()
+  return texture
 }
 
 function storeTexture(url, texture) {
@@ -103,4 +104,10 @@ export function areCoinTexturesReady(coins = []) {
   const urls = coins.map((c) => c.imageUrl).filter(Boolean)
   if (!urls.length) return true
   return urls.every((url) => !!getCachedTexture(url))
+}
+
+/** Bust in-memory cache (e.g. after orientation fix in dev). */
+export function clearTextureCache() {
+  cache.forEach((entry) => entry.texture?.dispose?.())
+  cache.clear()
 }

@@ -120,6 +120,13 @@ try {
                 $fields[] = 'tags = :tags';
                 $params['tags'] = json_encode($body['tags'], JSON_UNESCAPED_UNICODE);
             }
+            if (!empty($body['date']) && $user['role'] === 'admin') {
+                $ts = strtotime((string) $body['date']);
+                if ($ts !== false) {
+                    $fields[] = 'created_at = :created_at';
+                    $params['created_at'] = gmdate('Y-m-d H:i:s', $ts);
+                }
+            }
             if (!$fields) {
                 wl_error('Intet at opdatere.');
             }

@@ -19,7 +19,7 @@ function LeafyImg({ size = 72 }) {
 }
 
 export default function LeafyAssistant() {
-  const { toggleChat } = useStore()
+  const { toggleChat, isModalOpen } = useStore()
   const [cornerHovered, setCornerHovered] = useState(false)
 
   const handleContextMenu = useCallback(
@@ -29,6 +29,8 @@ export default function LeafyAssistant() {
     },
     [toggleChat]
   )
+
+  if (isModalOpen) return null
 
   return (
     <div
@@ -45,7 +47,7 @@ export default function LeafyAssistant() {
           animation: 'float 3.5s ease-in-out infinite',
         }}
       >
-        <LeafyImg size={74} />
+        <LeafyImg size={148} />
       </div>
 
       {cornerHovered && (

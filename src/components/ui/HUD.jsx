@@ -80,50 +80,10 @@ function StatsBar({ visible }) {
 }
 
 export default function HUD() {
-  const { isModalOpen, activeCoin, setActiveCoin, coins, toggleAdmin } = useStore()
+  const { isModalOpen, activeCoin, setActiveCoin, coins } = useStore()
 
   return (
     <>
-      {/* ── Top navigation bar ── */}
-      <header
-        className="fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-5 py-4 pointer-events-none"
-        style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, transparent 100%)' }}
-      >
-        {/* Logo */}
-        <div className="flex items-center gap-2.5 pointer-events-auto">
-          <div
-            className="w-9 h-9 rounded-full flex items-center justify-center"
-            style={{ border: '2px solid rgba(74,222,128,0.65)', background: 'rgba(74,222,128,0.1)' }}
-          >
-            <span className="text-green-400 text-xs font-bold tracking-wider">WL</span>
-          </div>
-          <div>
-            <div className="text-white font-semibold text-sm tracking-wide leading-none">WeeLeaf</div>
-            <div className="text-green-400/60 text-[9px] tracking-widest uppercase leading-none mt-0.5">
-              Sustainable Movement
-            </div>
-          </div>
-        </div>
-
-        {/* Tagline — desktop only */}
-        <div className="hidden md:block text-center pointer-events-none">
-          <p className="text-white/35 text-[10px] tracking-[0.3em] uppercase">
-            Where nature meets technology
-          </p>
-        </div>
-
-        {/* Contact link */}
-        <a
-          href="mailto:wl@weeleaf.com"
-          className="pointer-events-auto text-[11px] tracking-wide transition-colors"
-          style={{ color: 'rgba(134,239,172,0.7)' }}
-          onMouseEnter={(e) => (e.target.style.color = '#86efac')}
-          onMouseLeave={(e) => (e.target.style.color = 'rgba(134,239,172,0.7)')}
-        >
-          wl@weeleaf.com
-        </a>
-      </header>
-
       {/* ── Coin nav dots (left side, desktop) ── */}
       {!isModalOpen && (
         <nav className="fixed left-4 top-1/2 -translate-y-1/2 z-30 hidden md:flex flex-col gap-2.5">
@@ -157,20 +117,6 @@ export default function HUD() {
           ))}
         </nav>
       )}
-
-      {/* ── Admin button ── */}
-      <button
-        onClick={toggleAdmin}
-        className="fixed top-4 left-1/2 -translate-x-1/2 z-30 text-[10px] tracking-widest uppercase px-3 py-1.5 rounded-full border transition-all hover:opacity-100 opacity-30 hover:opacity-80"
-        style={{
-          color: 'rgba(134,239,172,0.9)',
-          borderColor: 'rgba(74,222,128,0.3)',
-          background: 'rgba(0,0,0,0.3)',
-          backdropFilter: 'blur(8px)',
-        }}
-      >
-        ⚙ Admin
-      </button>
 
       {/* ── Stats counter bar ── */}
       <StatsBar visible={!isModalOpen} />

@@ -17,4 +17,50 @@ export const WL = {
   goldLight: '#e8b060',
   accentBar: 'linear-gradient(90deg, #4ade80, #c8904a, #f0c070)',
   shadow: '0 8px 40px rgba(120, 80, 40, 0.12)',
+  /* Sky modal palette */
+  skyAccent: '#2b6cb0',
+  skyAccentSoft: 'rgba(43, 108, 176, 0.12)',
+  glassHeader: 'rgba(255, 251, 244, 0.58)',
+  glassCard: 'rgba(255, 252, 246, 0.78)',
+  glassPanel: 'rgba(255, 251, 244, 0.65)',
+  /* Modal — blue sky */
+  modalBackdrop: 'linear-gradient(180deg, #87ceeb 0%, #5eb3e8 45%, #4a9fd4 100%)',
+  modalHeaderGlass: 'rgba(255, 255, 255, 0.82)',
+  modalHeaderBorder: 'rgba(255, 255, 255, 0.55)',
+  textOnModal: '#1a2e3a',
+  textMutedOnModal: 'rgba(26, 46, 58, 0.75)',
+  textSoftOnModal: 'rgba(26, 46, 58, 0.55)',
+}
+
+export const accountInputCls =
+  'w-full text-sm rounded-xl px-4 py-2.5 outline-none border transition-all placeholder:opacity-50 focus:ring-2 focus:ring-offset-0'
+
+export const accountInputStyle = {
+  color: WL.text,
+  background: 'rgba(255, 255, 255, 0.92)',
+  borderColor: WL.border,
+}
+
+export const accountLabelCls =
+  'text-[10px] uppercase tracking-widest font-semibold mb-1.5 block'
+
+export const glassStyle = {
+  background: 'rgba(255, 255, 255, 0.88)',
+  border: '1px solid rgba(255, 255, 255, 0.7)',
+  boxShadow: '0 8px 32px rgba(30, 90, 140, 0.1), 0 1px 0 rgba(255,255,255,0.8) inset',
+  backdropFilter: 'blur(16px)',
+  WebkitBackdropFilter: 'blur(16px)',
+}
+
+export const accountCardStyle = {
+  ...glassStyle,
+}
+
+/** Dark glass panel for admin — readable white text on blue sky modals */
+export const adminShellStyle = {
+  background: 'rgba(16, 28, 40, 0.88)',
+  border: '1px solid rgba(255, 255, 255, 0.14)',
+  boxShadow: '0 16px 48px rgba(0, 0, 0, 0.35)',
+  backdropFilter: 'blur(20px)',
+  WebkitBackdropFilter: 'blur(20px)',
 }

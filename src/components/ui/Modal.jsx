@@ -1,22 +1,32 @@
-import React, { useEffect, useRef } from 'react'
-import { gsap } from 'gsap'
+import React from 'react'
 import useStore from '../../store/useStore'
 import ShopModal from './ShopModal'
 import CommunityModal from './CommunityModal'
 import MemberModal from './MemberModal'
-import { WL } from '../../styles/modalTheme'
+import FullscreenShell from './FullscreenShell'
+import { WL, glassStyle } from '../../styles/modalTheme'
 
-/* ─── Content renderer ─────────────────────────────────────────────── */
 function ContentRenderer({ content, accent }) {
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {content.sections?.map((section, i) => (
-        <section key={i} className="space-y-3">
+        <section
+          key={i}
+          className="rounded-xl p-5 md:p-6"
+          style={{
+            background: 'rgba(255,255,255,0.55)',
+            border: '1px solid rgba(255,255,255,0.65)',
+          }}
+        >
           {section.heading && (
             <h2
-              className="text-lg font-semibold pb-2 border-b"
-              style={{ color: WL.green, borderColor: WL.borderLight }}
+              className="text-base font-semibold mb-3 flex items-center gap-2"
+              style={{ color: WL.textOnModal }}
             >
+              <span
+                className="w-1 h-5 rounded-full flex-shrink-0"
+                style={{ background: accent }}
+              />
               {section.heading}
             </h2>
           )}
@@ -24,22 +34,27 @@ function ContentRenderer({ content, accent }) {
           {section.text && (
             <p
               className="text-[15px] leading-7 whitespace-pre-line"
-              style={{ color: WL.textMuted }}
+              style={{ color: WL.textMutedOnModal }}
             >
               {section.text}
             </p>
           )}
 
           {section.items && (
-            <ul className="space-y-4">
+            <ul className="space-y-3 mt-1">
               {section.items.map((item, j) => (
                 <li
                   key={j}
-                  className="pl-4 rounded-r-lg py-1"
-                  style={{ borderLeft: `3px solid ${accent}` }}
+                  className="rounded-lg px-4 py-3"
+                  style={{
+                    background: 'rgba(255,255,255,0.7)',
+                    borderLeft: `3px solid ${accent}`,
+                  }}
                 >
-                  <div className="font-medium" style={{ color: WL.text }}>{item.name}</div>
-                  <div className="text-sm mt-1 leading-relaxed" style={{ color: WL.textMuted }}>
+                  <div className="font-medium text-[15px]" style={{ color: WL.textOnModal }}>
+                    {item.name}
+                  </div>
+                  <div className="text-sm mt-1 leading-relaxed" style={{ color: WL.textMutedOnModal }}>
                     {item.desc}
                   </div>
                   {item.link && (
@@ -47,10 +62,10 @@ function ContentRenderer({ content, accent }) {
                       href={item.link}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-block mt-2 text-sm font-medium underline"
-                      style={{ color: WL.greenBright }}
+                      className="inline-block mt-2 text-sm font-medium"
+                      style={{ color: WL.skyAccent }}
                     >
-                      {item.link}
+                      {item.link} ↗
                     </a>
                   )}
                 </li>
@@ -59,24 +74,21 @@ function ContentRenderer({ content, accent }) {
           )}
 
           {section.socials && (
-            <ul
-              className="rounded-xl overflow-hidden divide-y"
-              style={{ border: `1px solid ${WL.borderLight}`, background: WL.panelBgSolid }}
-            >
+            <ul className="rounded-xl overflow-hidden divide-y mt-1" style={{ border: `1px solid rgba(59,130,180,0.15)` }}>
               {section.socials.map((s, j) => (
                 <li key={j}>
                   <a
                     href={s.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-3 px-4 py-3 hover:bg-amber-50/80 transition-colors"
+                    className="flex items-center gap-3 px-4 py-3 hover:bg-white/60 transition-colors"
                   >
                     <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: s.color }} />
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium" style={{ color: WL.text }}>{s.platform}</div>
-                      <div className="text-sm" style={{ color: WL.textSoft }}>{s.handle}</div>
+                      <div className="text-sm font-medium" style={{ color: WL.textOnModal }}>{s.platform}</div>
+                      <div className="text-sm" style={{ color: WL.textSoftOnModal }}>{s.handle}</div>
                     </div>
-                    <span style={{ color: WL.gold }}>→</span>
+                    <span style={{ color: WL.skyAccent }}>→</span>
                   </a>
                 </li>
               ))}
@@ -88,8 +100,8 @@ function ContentRenderer({ content, accent }) {
               href={section.link.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-block text-sm font-semibold underline"
-              style={{ color: WL.greenBright }}
+              className="inline-block text-sm font-semibold mt-2"
+              style={{ color: WL.skyAccent }}
             >
               {section.link.text} →
             </a>
@@ -98,11 +110,11 @@ function ContentRenderer({ content, accent }) {
           {section.cta && (
             <a
               href={`mailto:${section.cta.email}`}
-              className="inline-block px-5 py-2.5 text-sm font-semibold rounded-full transition-opacity hover:opacity-90"
+              className="inline-block mt-3 px-5 py-2.5 text-sm font-semibold rounded-full transition-opacity hover:opacity-90"
               style={{
-                background: `linear-gradient(135deg, ${WL.greenBright}, #4ade80)`,
+                background: WL.skyAccent,
                 color: '#fff',
-                boxShadow: '0 4px 16px rgba(61, 158, 95, 0.3)',
+                boxShadow: '0 4px 16px rgba(43,108,176,0.3)',
               }}
             >
               {section.cta.text}
@@ -114,21 +126,8 @@ function ContentRenderer({ content, accent }) {
   )
 }
 
-/* ─── Modal ──────────────────────────────────────────────────────────── */
 export default function Modal() {
   const { activeCoin, isModalOpen, closeModal, donationConfig } = useStore()
-  const panelRef = useRef()
-
-  useEffect(() => {
-    if (isModalOpen && panelRef.current) {
-      gsap.fromTo(panelRef.current, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: 'power2.out' })
-    }
-  }, [isModalOpen])
-
-  const handleClose = () => {
-    if (!panelRef.current) { closeModal(); return }
-    gsap.to(panelRef.current, { opacity: 0, duration: 0.22, ease: 'power2.in', onComplete: closeModal })
-  }
 
   if (!isModalOpen || !activeCoin) return null
 
@@ -145,104 +144,77 @@ export default function Modal() {
   }
 
   const accent = activeCoin.color
+  const title = activeCoin.content?.title || activeCoin.subtitle
+  const tagline = activeCoin.content?.tagline
 
   return (
-    <div
-      ref={panelRef}
-      className="fixed inset-0 z-50 flex flex-col min-h-0"
-      style={{ background: WL.pageBg }}
-    >
-      {/* Warm accent strip */}
-      <div className="h-1 flex-shrink-0" style={{ background: WL.accentBar }} />
-
-      {/* Header */}
-      <header
-        className="flex-shrink-0 flex items-start justify-between gap-4 px-5 md:px-10 py-4 border-b backdrop-blur-sm"
-        style={{ background: WL.headerBg, borderColor: WL.borderLight }}
-      >
-        <div className="min-w-0 pr-4">
-          <p
-            className="text-[10px] uppercase tracking-[0.25em] font-medium mb-1"
-            style={{ color: WL.gold }}
-          >
+    <FullscreenShell onClose={closeModal} contentClassName="max-w-3xl" headerLayout="none">
+      <div className="rounded-2xl overflow-hidden" style={glassStyle}>
+        <div
+          className="px-6 md:px-10 pt-8 pb-6"
+          style={{
+            background: `linear-gradient(135deg, ${accent}18, rgba(255,255,255,0.5))`,
+            borderBottom: '1px solid rgba(255,255,255,0.6)',
+          }}
+        >
+          <p className="text-[10px] uppercase tracking-[0.22em] font-semibold mb-2" style={{ color: WL.skyAccent }}>
             WeeLeaf
           </p>
-          <h1 className="text-xl md:text-2xl font-bold leading-tight" style={{ color: WL.text }}>
-            {activeCoin.content?.title || activeCoin.subtitle}
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight" style={{ color: WL.textOnModal }}>
+            {title}
           </h1>
-          {activeCoin.content?.tagline && (
-            <p className="text-sm mt-1.5 italic" style={{ color: WL.textSoft }}>
-              {activeCoin.content.tagline}
+          {tagline && (
+            <p className="text-sm md:text-base mt-2 leading-relaxed" style={{ color: WL.textMutedOnModal }}>
+              {tagline}
             </p>
           )}
         </div>
-        <button
-          onClick={handleClose}
-          className="flex-shrink-0 w-10 h-10 flex items-center justify-center text-xl rounded-full transition-all hover:scale-105"
-          style={{
-            color: WL.textMuted,
-            background: 'rgba(255,255,255,0.7)',
-            border: `1px solid ${WL.border}`,
-          }}
-          aria-label="Close"
-        >
-          ×
-        </button>
-      </header>
 
-      {/* Content */}
-      <main className="flex-1 overflow-y-auto min-h-0">
-        <div className="max-w-3xl mx-auto px-4 md:px-8 py-8 md:py-10">
-          <div
-            className="rounded-2xl px-6 md:px-10 py-8 md:py-10"
-            style={{
-              background: WL.panelBg,
-              border: `1px solid ${WL.borderLight}`,
-              boxShadow: WL.shadow,
-            }}
-          >
-            <ContentRenderer content={activeCoin.content} accent={accent} />
+        <div className="px-6 md:px-10 py-7 md:py-8">
+          <ContentRenderer content={activeCoin.content} accent={accent} />
 
-            {activeCoin.id === 'donations' && (donationConfig.mobilepay || donationConfig.link || donationConfig.qrImageUrl) && (
-              <section className="mt-10 pt-8 space-y-5" style={{ borderTop: `1px solid ${WL.borderLight}` }}>
-                <h2 className="text-lg font-semibold pb-2 border-b" style={{ color: WL.green, borderColor: WL.borderLight }}>
-                  Betal nu
-                </h2>
+          {activeCoin.id === 'donations' && (donationConfig.mobilepay || donationConfig.link || donationConfig.qrImageUrl) && (
+            <section
+              className="mt-8 pt-6 space-y-5 rounded-xl p-5"
+              style={{ background: 'rgba(255,255,255,0.55)', border: '1px solid rgba(255,255,255,0.65)' }}
+            >
+              <h2 className="text-base font-semibold" style={{ color: WL.textOnModal }}>
+                Betal nu
+              </h2>
 
-                {donationConfig.qrImageUrl && (
-                  <div className="flex flex-col items-start gap-2">
-                    <img
-                      src={donationConfig.qrImageUrl}
-                      alt="MobilePay QR"
-                      className="w-48 h-48 object-contain rounded-xl bg-white p-2"
-                      style={{ border: `1px solid ${WL.border}` }}
-                    />
-                    <p className="text-sm" style={{ color: WL.textSoft }}>Scan QR-koden med MobilePay</p>
-                  </div>
-                )}
+              {donationConfig.qrImageUrl && (
+                <div className="flex flex-col items-start gap-2">
+                  <img
+                    src={donationConfig.qrImageUrl}
+                    alt="MobilePay QR"
+                    className="w-48 h-48 object-contain rounded-xl bg-white p-2"
+                    style={{ border: `1px solid rgba(59,130,180,0.2)` }}
+                  />
+                  <p className="text-sm" style={{ color: WL.textSoftOnModal }}>Scan QR-koden med MobilePay</p>
+                </div>
+              )}
 
-                {donationConfig.mobilepay && (
-                  <p className="text-[15px]" style={{ color: WL.textMuted }}>
-                    MobilePay: <strong style={{ color: WL.text }}>{donationConfig.mobilepay}</strong>
-                  </p>
-                )}
+              {donationConfig.mobilepay && (
+                <p className="text-[15px]" style={{ color: WL.textMutedOnModal }}>
+                  MobilePay: <strong style={{ color: WL.textOnModal }}>{donationConfig.mobilepay}</strong>
+                </p>
+              )}
 
-                {donationConfig.link && (
-                  <a
-                    href={donationConfig.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-block text-sm font-semibold underline"
-                    style={{ color: WL.greenBright }}
-                  >
-                    Betal via MobilePay →
-                  </a>
-                )}
-              </section>
-            )}
-          </div>
+              {donationConfig.link && (
+                <a
+                  href={donationConfig.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block text-sm font-semibold"
+                  style={{ color: WL.skyAccent }}
+                >
+                  Betal via MobilePay →
+                </a>
+              )}
+            </section>
+          )}
         </div>
-      </main>
-    </div>
+      </div>
+    </FullscreenShell>
   )
 }

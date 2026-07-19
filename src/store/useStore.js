@@ -48,6 +48,8 @@ const useStore = create((set, get) => ({
   closeModal: () => set({ activeCoin: null, isModalOpen: false }),
   toggleChat: () => set((s) => ({ isChatOpen: !s.isChatOpen })),
   toggleAdmin: () => set((s) => ({ isAdminOpen: !s.isAdminOpen })),
+  accountOpenTab: 'member',
+  setAccountOpenTab: (tab) => set({ accountOpenTab: tab }),
   setLeafyPos: (pos) => set({ leafyPos: pos }),
 
   loadFromApi: async () => {
@@ -87,6 +89,21 @@ const useStore = create((set, get) => ({
       }
     }
 
+    return { ok: true }
+  },
+
+  refreshAdminData: async () => {
+    const subs = await api.fetchSubmissions()
+    if (subs.ok && subs.pendingShopSubmissions) {
+      set({ pendingShopSubmissions: subs.pendingShopSubmissions })
+    }
+    const cfg = await api.fetchConfig()
+    if (cfg.ok) {
+      const patch = {}
+      if (Array.isArray(cfg.blogPosts)) patch.blogPosts = cfg.blogPosts
+      if (Array.isArray(cfg.shopCategories)) patch.shopCategories = cfg.shopCategories
+      if (Object.keys(patch).length) set(patch)
+    }
     return { ok: true }
   },
 

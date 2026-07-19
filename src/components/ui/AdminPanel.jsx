@@ -1,74 +1,18 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { gsap } from 'gsap'
 import useStore from '../../store/useStore'
+import { WL, accountInputCls, accountInputStyle } from '../../styles/modalTheme'
 
-const LOCKED_COIN_IDS = ['shop', 'member'] // coins that can only have their image changed
-
-function useAdminAuth() {
-  const adminLogin = useStore((s) => s.adminLogin)
-  const logoutUser = useStore((s) => s.logoutUser)
-  const currentUser = useStore((s) => s.currentUser)
-  const authed = currentUser?.role === 'admin'
-
-  const login = async (pw) => {
-    const res = await adminLogin(pw)
-    return res.ok
-  }
-
-  const logout = () => {
-    logoutUser()
-  }
-
-  return { authed, login, logout }
-}
-
-function AdminLoginGate({ onAuth }) {
-  const [pw, setPw] = useState('')
-  const [err, setErr] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const inputRef = useRef()
-  useEffect(() => { inputRef.current?.focus() }, [])
-  const submit = async () => {
-    setLoading(true)
-    const ok = await onAuth(pw)
-    setLoading(false)
-    if (!ok) { setErr(true); setPw('') }
-  }
-  return (
-    <div className="flex flex-col items-center justify-center h-full min-h-[400px] gap-5 px-6">
-      <div className="text-4xl">🔒</div>
-      <div className="text-center">
-        <div className="text-white font-bold text-lg tracking-tight">Admin adgang</div>
-        <div className="text-white/35 text-xs mt-1">Indtast adgangskode for at fortsætte</div>
-      </div>
-      <div className="w-full space-y-3">
-        <input
-          ref={inputRef}
-          type="password"
-          value={pw}
-          onChange={(e) => { setPw(e.target.value); setErr(false) }}
-          onKeyDown={(e) => e.key === 'Enter' && submit()}
-          placeholder="Adgangskode"
-          className="w-full text-sm rounded-xl px-4 py-3 text-white/85 placeholder-white/25 outline-none border bg-white/5 text-center tracking-widest"
-          style={{ borderColor: err ? 'rgba(248,113,113,0.5)' : 'rgba(255,255,255,0.12)' }}
-        />
-        {err && <p className="text-center text-xs text-red-400">Forkert adgangskode</p>}
-        <button
-          onClick={submit}
-          disabled={loading}
-          className="w-full py-2.5 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-50"
-          style={{ background: 'rgba(74,222,128,0.22)', border: '1px solid rgba(74,222,128,0.4)', color: '#86efac' }}
-        >Godkend →</button>
-      </div>
-    </div>
-  )
-}
+const LOCKED_COIN_IDS = ['shop', 'member']
+const inputCls = accountInputCls
+const inputStyle = accountInputStyle
 
 /* ─── Product editor (used inside ShopAdmin) ─────────────────────────── */
 function ProductEditor({ product, catColor, onSave, onCancel }) {
   const [draft, setDraft] = useState({ ...product })
   const set = (patch) => setDraft((d) => ({ ...d, ...patch }))
-  const inputCls = 'w-full text-sm rounded-lg px-3 py-2 text-white/85 placeholder-white/25 outline-none border bg-white/5 border-white/10 focus:border-blue-400/40 transition-colors'
+  const inputCls = 'w-full text-sm rounded-lg px-3 py-2 outline-none border transition-colors'
+  const inputStyle = accountInputStyle
 
   return (
     <div className="rounded-xl p-3 space-y-2" style={{ background: 'rgba(255,255,255,0.05)', border: `1px solid ${catColor}28` }}>
@@ -112,7 +56,8 @@ function ShopAdmin() {
   const [editingKey, setEditingKey] = useState(null) // `new-${catId}` or productId
   const [addingCat, setAddingCat] = useState(false)
   const [newCat, setNewCat] = useState({ label: '', icon: '🛍️', color: '#60a5fa' })
-  const inputCls = 'w-full text-sm rounded-lg px-3 py-2 text-white/85 placeholder-white/25 outline-none border bg-white/5 border-white/10 focus:border-blue-400/40 transition-colors'
+  const inputCls = 'w-full text-sm rounded-lg px-3 py-2 outline-none border transition-colors'
+  const inputStyle = accountInputStyle
   const CAT_COLORS = ['#60a5fa', '#86efac', '#fbbf24', '#c084fc', '#f472b6', '#34d399']
 
   return (
@@ -233,6 +178,17 @@ function PendingShopAdmin() {
   const pending = pendingShopSubmissions.filter((s) => s.status === 'pending')
   const reviewed = pendingShopSubmissions.filter((s) => s.status !== 'pending')
 
+  const handleApprove = async (id) => {
+    const res = await approveShopSubmission(id)
+    if (!res?.ok) window.alert(res?.error || 'Kunne ikke godkende produktet.')
+  }
+
+  const handleReject = async (id) => {
+    if (!window.confirm('Afvis dette produktforslag?')) return
+    const res = await rejectShopSubmission(id)
+    if (!res?.ok) window.alert(res?.error || 'Kunne ikke afvise produktet.')
+  }
+
   return (
     <div className="space-y-4">
       <p className="text-white/35 text-xs leading-relaxed">
@@ -278,14 +234,14 @@ function PendingShopAdmin() {
           )}
           <div className="px-4 pb-4 flex gap-2">
             <button
-              onClick={() => approveShopSubmission(sub.id)}
+              onClick={() => handleApprove(sub.id)}
               className="flex-1 py-2 rounded-xl text-xs font-semibold text-white transition-all"
               style={{ background: 'rgba(74,222,128,0.22)', border: '1px solid rgba(74,222,128,0.4)', color: '#86efac' }}
             >
               ✓ Godkend
             </button>
             <button
-              onClick={() => rejectShopSubmission(sub.id)}
+              onClick={() => handleReject(sub.id)}
               className="flex-1 py-2 rounded-xl text-xs font-semibold transition-all"
               style={{ background: 'rgba(248,113,113,0.12)', border: '1px solid rgba(248,113,113,0.3)', color: '#fca5a5' }}
             >
@@ -1079,23 +1035,15 @@ function PublishAdmin() {
   )
 }
 
-/* ─── Admin Panel ────────────────────────────────────────────────────── */
-export default function AdminPanel() {
-  const { isAdminOpen, toggleAdmin, coins, addCoin, updateCoin, deleteCoin, resetCoins, pendingShopSubmissions } = useStore()
+/* ─── Admin dashboard (embedded in account modal) ─────────────────── */
+export function AdminDashboard() {
+  const { coins, addCoin, updateCoin, deleteCoin, resetCoins, pendingShopSubmissions, refreshAdminData } = useStore()
   const [editingId, setEditingId] = useState(null)
   const [activeTab, setActiveTab] = useState('coins')
-  const panelRef = useRef()
-  const { authed, login, logout } = useAdminAuth()
 
   useEffect(() => {
-    if (isAdminOpen && panelRef.current) {
-      gsap.fromTo(
-        panelRef.current,
-        { opacity: 0, x: 40, scale: 0.96 },
-        { opacity: 1, x: 0, scale: 1, duration: 0.38, ease: 'back.out(1.5)' }
-      )
-    }
-  }, [isAdminOpen])
+    refreshAdminData()
+  }, [refreshAdminData])
 
   const handleSave = useCallback((draft) => {
     updateCoin(draft.id, draft)
@@ -1104,8 +1052,7 @@ export default function AdminPanel() {
 
   const handleAdd = useCallback(() => {
     const coin = blankCoin(coins.length)
-    const redistributed = addCoin(coin)
-    // addCoin returns the redistributed version; use its id (same) to open editor
+    addCoin(coin)
     setEditingId(coin.id)
   }, [coins.length, addCoin])
 
@@ -1115,159 +1062,115 @@ export default function AdminPanel() {
   }, [deleteCoin])
 
   const pendingCount = pendingShopSubmissions.filter((s) => s.status === 'pending').length
-
-  if (!isAdminOpen) return null
-
   const editingCoin = editingId ? coins.find((c) => c.id === editingId) : null
 
-  return (
-    <>
-      {/* Backdrop */}
-      <div className="fixed inset-0 z-[60]" onClick={toggleAdmin} />
+  const tabs = [
+    { key: 'coins', label: '🌿 Nodes' },
+    { key: 'shop', label: '🛍️ Shop' },
+    { key: 'approvals', label: pendingCount ? `✅ Godkend (${pendingCount})` : '✅ Godkend' },
+    { key: 'blog', label: '📝 Blog' },
+    { key: 'donation', label: '💳 Give' },
+    { key: 'stats', label: '📊 Tæller' },
+    { key: 'publish', label: '🚀 Publicér' },
+  ]
 
-      {/* Panel */}
-      <div
-        ref={panelRef}
-        className="fixed top-0 right-0 bottom-0 z-[70] w-full max-w-sm overflow-y-auto"
-        style={{
-          background: 'rgba(4,14,8,0.92)',
-          backdropFilter: 'blur(32px)',
-          WebkitBackdropFilter: 'blur(32px)',
-          borderLeft: '1px solid rgba(74,222,128,0.18)',
-          boxShadow: '-24px 0 80px rgba(0,0,0,0.6)',
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/10 sticky top-0 z-10" style={{ background: 'rgba(4,14,8,0.95)' }}>
-          <div>
-            <div className="text-white font-bold text-base tracking-tight">⚙ Admin</div>
-            <div className="text-white/35 text-[10px] tracking-widest uppercase mt-0.5">{coins.length} nodes · shop</div>
-          </div>
-          <div className="flex items-center gap-1">
-            {authed && (
+  return (
+    <div className="flex flex-col h-full min-h-0">
+      <div className="flex gap-1.5 overflow-x-auto pb-3 flex-shrink-0">
+        {tabs.map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => { setActiveTab(key); setEditingId(null) }}
+            className="flex-shrink-0 py-2 px-3 rounded-xl text-xs font-semibold transition-all"
+            style={{
+              background: activeTab === key ? 'rgba(61, 158, 95, 0.22)' : 'rgba(255,255,255,0.08)',
+              border: `1px solid ${activeTab === key ? WL.greenBright : 'rgba(255,255,255,0.12)'}`,
+              color: activeTab === key ? '#86efac' : 'rgba(255,255,255,0.65)',
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex-1 overflow-y-auto min-h-0 space-y-5 pr-1">
+        <button
+          type="button"
+          onClick={() => {
+            const { coins: c, shopCategories, blogPosts, donationConfig } = useStore.getState()
+            const blob = new Blob([JSON.stringify({ coins: c, shopCategories, blogPosts, donationConfig }, null, 2)], { type: 'application/json' })
+            const a = document.createElement('a')
+            a.href = URL.createObjectURL(blob)
+            a.download = 'wl-config.json'
+            a.click()
+            URL.revokeObjectURL(a.href)
+          }}
+          className="text-xs px-3 py-1.5 rounded-lg"
+          style={{ color: '#86efac', border: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.06)' }}
+        >
+          📤 Eksporter config
+        </button>
+
+        {activeTab === 'shop' && <ShopAdmin />}
+        {activeTab === 'approvals' && <PendingShopAdmin />}
+        {activeTab === 'blog' && <BlogAdmin />}
+        {activeTab === 'stats' && <StatsAdmin />}
+        {activeTab === 'donation' && <DonationAdmin />}
+        {activeTab === 'publish' && <PublishAdmin />}
+
+        {activeTab === 'coins' && (
+          <>
+            {!editingId && (
               <>
-                <button
-                  onClick={() => {
-                    const { coins, shopCategories, blogPosts, donationConfig } = useStore.getState()
-                    const config = { coins, shopCategories, blogPosts, donationConfig }
-                    const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' })
-                    const a = document.createElement('a')
-                    a.href = URL.createObjectURL(blob)
-                    a.download = 'wl-config.json'
-                    a.click()
-                    URL.revokeObjectURL(a.href)
-                  }}
-                  className="text-white/20 hover:text-green-400 text-xs px-2 py-1 rounded-lg transition-colors"
-                  title="Eksporter config (erstat public/wl-config.json og push)"
-                >📤</button>
-                <button onClick={logout} className="text-white/20 hover:text-white/50 text-xs px-2 py-1 rounded-lg transition-colors" title="Log ud">🔒</button>
+                <div className="space-y-2">
+                  {coins.map((coin, i) => (
+                    <CoinRow
+                      key={coin.id}
+                      coin={coin}
+                      index={i}
+                      isEditing={editingId === coin.id}
+                      onSelect={() => setEditingId(editingId === coin.id ? null : coin.id)}
+                      onDelete={() => handleDelete(coin.id)}
+                      onEdit={() => setEditingId(coin.id)}
+                    />
+                  ))}
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <button
+                    onClick={handleAdd}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
+                    style={{ background: 'rgba(61,158,95,0.2)', border: `1px solid ${WL.greenBright}`, color: '#86efac' }}
+                  >
+                    + Add Coin
+                  </button>
+                  <button
+                    onClick={() => { if (window.confirm('Reset all coins to defaults?')) { resetCoins(); setEditingId(null) } }}
+                    className="px-4 py-2.5 rounded-xl text-sm"
+                    style={{ color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.15)' }}
+                  >
+                    ↺
+                  </button>
+                </div>
+                <p className="text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                  Ændringer gemmes i databasen og vises for alle besøgende.
+                </p>
               </>
             )}
-            <button onClick={toggleAdmin} className="w-8 h-8 rounded-full flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition-all text-xl leading-none">×</button>
-          </div>
-        </div>
-
-        {/* Auth gate */}
-        {!authed && <AdminLoginGate onAuth={login} />}
-
-        {/* Tab switcher */}
-        {authed && <div className="flex gap-1 px-4 pt-3 pb-1">
-          {[{ key: 'coins', label: '🌿 Nodes' }, { key: 'shop', label: '🛍️ Shop' }, { key: 'approvals', label: pendingCount ? `✅ Godkend (${pendingCount})` : '✅ Godkend' }, { key: 'blog', label: '📝 Blog' }, { key: 'donation', label: '💳 Give' }, { key: 'stats', label: '📊 Tæller' }, { key: 'publish', label: '🚀 Publicér' }].map(({ key, label }) => (
-            <button
-              key={key}
-              onClick={() => { setActiveTab(key); setEditingId(null) }}
-              className="flex-1 py-2 rounded-xl text-xs font-semibold transition-all"
-              style={{
-                background: activeTab === key ? 'rgba(74,222,128,0.18)' : 'rgba(255,255,255,0.04)',
-                border: `1px solid ${activeTab === key ? 'rgba(74,222,128,0.4)' : 'rgba(255,255,255,0.08)'}`,
-                color: activeTab === key ? '#86efac' : 'rgba(255,255,255,0.4)',
-              }}
-            >{label}</button>
-          ))}
-        </div>}
-
-        {authed && <div className="px-4 py-4 space-y-5">
-          {/* Shop tab */}
-          {activeTab === 'shop' && <ShopAdmin />}
-
-          {/* Shop approvals tab */}
-          {activeTab === 'approvals' && <PendingShopAdmin />}
-
-          {/* Blog tab */}
-          {activeTab === 'blog' && <BlogAdmin />}
-
-          {/* Stats tab */}
-          {activeTab === 'stats' && <StatsAdmin />}
-
-          {/* Donation tab */}
-          {activeTab === 'donation' && <DonationAdmin />}
-
-          {/* Publish tab */}
-          {activeTab === 'publish' && <PublishAdmin />}
-
-          {/* Coins tab */}
-          {activeTab === 'coins' && (
-            <>
-              {!editingId && (
-                <>
-                  <div className="space-y-2">
-                    {coins.map((coin, i) => (
-                      <CoinRow
-                        key={coin.id}
-                        coin={coin}
-                        index={i}
-                        isEditing={editingId === coin.id}
-                        onSelect={() => setEditingId(editingId === coin.id ? null : coin.id)}
-                        onDelete={() => handleDelete(coin.id)}
-                        onEdit={() => setEditingId(coin.id)}
-                      />
-                    ))}
-                  </div>
-
-                  {/* Add & Reset */}
-                  <div className="flex gap-2">
-                    <button
-                      onClick={handleAdd}
-                      className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-all"
-                      style={{ background: 'rgba(74,222,128,0.18)', border: '1px solid rgba(74,222,128,0.35)', color: '#86efac' }}
-                    >
-                      + Add Coin
-                    </button>
-                    <button
-                      onClick={() => { if (window.confirm('Reset all coins to defaults?')) { resetCoins(); setEditingId(null) } }}
-                      className="px-4 py-2.5 rounded-xl text-sm text-white/35 hover:text-white/60 border border-white/10 transition-colors"
-                      title="Reset to defaults"
-                    >
-                      ↺
-                    </button>
-                  </div>
-
-                  <div className="text-white/20 text-[10px] leading-relaxed">
-                    Changes are saved to localStorage and persist across refreshes. Click a coin row to edit it.
-                  </div>
-                </>
-              )}
-
-              {editingId && editingCoin && (
-                <>
-                  <button
-                    onClick={() => setEditingId(null)}
-                    className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white/70 transition-colors"
-                  >
-                    ← Back to list
-                  </button>
-                  <CoinEditor
-                    coin={editingCoin}
-                    onSave={handleSave}
-                    onClose={() => setEditingId(null)}
-                  />
-                </>
-              )}
-            </>
-          )}
-        </div>}
+            {editingId && editingCoin && (
+              <>
+                <button type="button" onClick={() => setEditingId(null)} className="text-xs" style={{ color: 'rgba(255,255,255,0.6)' }}>
+                  ← Tilbage til liste
+                </button>
+                <CoinEditor coin={editingCoin} onSave={handleSave} onClose={() => setEditingId(null)} />
+              </>
+            )}
+          </>
+        )}
       </div>
-    </>
+    </div>
   )
+}
+
+export default function AdminPanel() {
+  return null
 }

@@ -61,7 +61,7 @@ def main() -> int:
         f"chmod 755 {remote_base}/assets && chmod 644 {remote_base}/assets/*"
     )
 
-    db_pass = password.replace("'", "\\'")
+    db_pass = (os.environ.get("WL_DB_PASS") or os.environ.get("WL_DEPLOY_PASS") or "").replace("'", "\\'")
     php_config = f"""<?php
 return [
     'db_host' => 'localhost',

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
-import { gsap } from 'gsap'
 import useStore from '../../store/useStore'
-import { WL } from '../../styles/modalTheme'
+import FullscreenShell from './FullscreenShell'
+import { WL, glassStyle } from '../../styles/modalTheme'
 
 const POSTS_PER_PAGE = 8
 
@@ -36,16 +36,9 @@ function formatFeedDate(iso) {
 
 function SideCard({ title, children, className = '' }) {
   return (
-    <div
-      className={`rounded-2xl p-4 ${className}`}
-      style={{
-        background: WL.feedBg,
-        border: `1px solid ${WL.border}`,
-        boxShadow: WL.shadow,
-      }}
-    >
+    <div className={`rounded-2xl p-4 ${className}`} style={glassStyle}>
       {title && (
-        <h3 className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: WL.gold }}>
+        <h3 className="text-[11px] font-semibold uppercase tracking-wider mb-3" style={{ color: WL.skyAccent }}>
           {title}
         </h3>
       )}
@@ -67,8 +60,8 @@ function FeedPost({ post }) {
         <div
           className="w-11 h-11 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
           style={{
-            background: `linear-gradient(135deg, ${WL.greenBright}, #4ade80)`,
-            boxShadow: `0 0 0 2px #fff, 0 0 0 3px ${WL.goldLight}`,
+            background: WL.skyAccent,
+            boxShadow: '0 0 0 2px #fff',
           }}
         >
           {authorInitials(post.author)}
@@ -164,17 +157,17 @@ function CommunitySidebar({ blogPosts, stats }) {
         <div className="grid grid-cols-2 gap-2 mt-4">
           <div
             className="rounded-xl px-3 py-2 text-center"
-            style={{ background: 'rgba(74,222,128,0.1)', border: `1px solid ${WL.borderLight}` }}
+            style={{ background: WL.skyAccentSoft, border: '1px solid rgba(43,108,176,0.15)' }}
           >
-            <div className="text-xl font-bold" style={{ color: WL.green }}>{stats.postCount}</div>
-            <div className="text-[10px] uppercase tracking-wide" style={{ color: WL.textSoft }}>Indlæg</div>
+            <div className="text-xl font-bold" style={{ color: WL.skyAccent }}>{stats.postCount}</div>
+            <div className="text-[10px] uppercase tracking-wide" style={{ color: WL.textSoftOnModal }}>Indlæg</div>
           </div>
           <div
             className="rounded-xl px-3 py-2 text-center"
-            style={{ background: 'rgba(200,144,74,0.1)', border: `1px solid ${WL.borderLight}` }}
+            style={{ background: WL.skyAccentSoft, border: '1px solid rgba(43,108,176,0.15)' }}
           >
-            <div className="text-xl font-bold" style={{ color: WL.gold }}>{stats.authorCount}</div>
-            <div className="text-[10px] uppercase tracking-wide" style={{ color: WL.textSoft }}>Forfattere</div>
+            <div className="text-xl font-bold" style={{ color: WL.skyAccent }}>{stats.authorCount}</div>
+            <div className="text-[10px] uppercase tracking-wide" style={{ color: WL.textSoftOnModal }}>Forfattere</div>
           </div>
         </div>
       </SideCard>
@@ -187,9 +180,9 @@ function CommunitySidebar({ blogPosts, stats }) {
                 key={tag}
                 className="text-xs px-2.5 py-1 rounded-full font-medium"
                 style={{
-                  color: WL.green,
-                  background: 'rgba(74,222,128,0.1)',
-                  border: `1px solid rgba(74,222,128,0.2)`,
+                  color: WL.skyAccent,
+                  background: WL.skyAccentSoft,
+                  border: '1px solid rgba(43,108,176,0.18)',
                 }}
               >
                 #{tag} <span style={{ color: WL.textSoft }}>({count})</span>
@@ -206,7 +199,7 @@ function CommunitySidebar({ blogPosts, stats }) {
               <li key={name} className="flex items-center gap-2">
                 <span
                   className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0"
-                  style={{ background: WL.greenBright }}
+                  style={{ background: WL.skyAccent }}
                 >
                   {authorInitials(name)}
                 </span>
@@ -268,19 +261,13 @@ function CommunityRightPanel({ blogPosts, stats }) {
         </ul>
       </SideCard>
 
-      <div
-        className="rounded-2xl p-4 text-center"
-        style={{
-          background: `linear-gradient(135deg, rgba(74,222,128,0.15), rgba(200,144,74,0.12))`,
-          border: `1px solid ${WL.border}`,
-        }}
-      >
-        <span className="text-3xl block mb-2">✍️</span>
-        <p className="text-sm font-semibold mb-1" style={{ color: WL.text }}>
+      <div className="rounded-2xl p-4 text-center" style={glassStyle}>
+        <span className="text-2xl block mb-2">✍️</span>
+        <p className="text-sm font-semibold mb-1" style={{ color: WL.textOnModal }}>
           Vil du skrive med?
         </p>
-        <p className="text-xs leading-relaxed" style={{ color: WL.textMuted }}>
-          Log ind via <strong style={{ color: WL.green }}>Login</strong>-noden for at udgive dine egne indlæg i feedet.
+        <p className="text-xs leading-relaxed" style={{ color: WL.textMutedOnModal }}>
+          Log ind via <strong style={{ color: WL.skyAccent }}>Login</strong>-noden for at udgive dine egne indlæg.
         </p>
       </div>
 
@@ -299,7 +286,6 @@ function CommunityRightPanel({ blogPosts, stats }) {
 export default function CommunityModal({ coin, onClose }) {
   const { blogPosts, stats } = useStore()
   const [visibleCount, setVisibleCount] = useState(POSTS_PER_PAGE)
-  const panelRef = useRef()
   const loaderRef = useRef()
 
   const sorted = [...blogPosts].sort((a, b) => new Date(b.date) - new Date(a.date))
@@ -317,12 +303,6 @@ export default function CommunityModal({ coin, onClose }) {
   }, [blogPosts, stats])
 
   useEffect(() => {
-    if (panelRef.current) {
-      gsap.fromTo(panelRef.current, { opacity: 0 }, { opacity: 1, duration: 0.3, ease: 'power2.out' })
-    }
-  }, [])
-
-  useEffect(() => {
     if (!loaderRef.current || !hasMore) return
     const observer = new IntersectionObserver(
       (entries) => {
@@ -334,51 +314,15 @@ export default function CommunityModal({ coin, onClose }) {
     return () => observer.disconnect()
   }, [hasMore, visibleCount])
 
-  const handleClose = () => {
-    if (!panelRef.current) { onClose(); return }
-    gsap.to(panelRef.current, { opacity: 0, duration: 0.22, ease: 'power2.in', onComplete: onClose })
-  }
-
   return (
-    <div
-      ref={panelRef}
-      className="fixed inset-0 z-50 flex flex-col min-h-0"
-      style={{ background: WL.pageBg }}
+    <FullscreenShell
+      eyebrow="Community"
+      title="WL Community"
+      tagline={`${feedStats.postCount} indlæg · ${feedStats.authorCount} forfattere`}
+      onClose={onClose}
+      contentClassName="max-w-7xl"
     >
-      <div className="h-1 flex-shrink-0" style={{ background: WL.accentBar }} />
-
-      <header
-        className="flex-shrink-0 sticky top-0 z-20 border-b backdrop-blur-sm"
-        style={{ background: WL.headerBg, borderColor: WL.borderLight }}
-      >
-        <div className="max-w-7xl mx-auto flex items-center justify-between px-4 md:px-6 h-14">
-          <div className="flex items-center gap-2">
-            <span className="text-lg">🌿</span>
-            <div>
-              <h1 className="text-lg font-bold leading-none" style={{ color: WL.text }}>WL Community</h1>
-              <p className="text-[11px] hidden sm:block" style={{ color: WL.textSoft }}>
-                {feedStats.postCount} indlæg · {feedStats.authorCount} forfattere
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={handleClose}
-            className="w-9 h-9 flex items-center justify-center text-xl rounded-full transition-all hover:scale-105"
-            style={{
-              color: WL.textMuted,
-              background: 'rgba(255,255,255,0.7)',
-              border: `1px solid ${WL.border}`,
-            }}
-            aria-label="Close"
-          >
-            ×
-          </button>
-        </div>
-      </header>
-
-      <main className="flex-1 overflow-y-auto min-h-0">
-        <div className="max-w-7xl mx-auto px-4 md:px-6 py-5 md:py-6">
-          <div className="grid grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)_260px] gap-5 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[260px_minmax(0,1fr)_260px] gap-5 items-start">
 
             {/* Left sidebar — desktop */}
             <aside className="hidden lg:block space-y-4 sticky top-[4.5rem]">
@@ -386,26 +330,19 @@ export default function CommunityModal({ coin, onClose }) {
             </aside>
 
             {/* Center feed */}
-            <div
-              className="min-w-0 rounded-2xl overflow-hidden"
-              style={{
-                background: WL.feedBg,
-                border: `1px solid ${WL.border}`,
-                boxShadow: WL.shadow,
-              }}
-            >
+            <div className="min-w-0 rounded-2xl overflow-hidden" style={glassStyle}>
               <div
-                className="px-5 py-3.5 border-b text-sm flex items-center gap-2"
+                className="px-5 py-3 border-b text-sm flex items-center gap-2"
                 style={{
-                  borderColor: WL.borderLight,
-                  background: 'linear-gradient(90deg, rgba(74,222,128,0.08), rgba(200,144,74,0.06))',
-                  color: WL.textMuted,
+                  borderColor: 'rgba(59,130,180,0.12)',
+                  background: 'rgba(255,255,255,0.5)',
+                  color: WL.textMutedOnModal,
                 }}
               >
-                <span className="text-lg">✍️</span>
+                <span className="text-base">✍️</span>
                 <span>
                   Vil du dele noget? Log ind via{' '}
-                  <span className="font-semibold" style={{ color: WL.green }}>Login</span>-noden.
+                  <span className="font-semibold" style={{ color: WL.skyAccent }}>Login</span>-noden.
                 </span>
               </div>
 
@@ -450,9 +387,7 @@ export default function CommunityModal({ coin, onClose }) {
               <CommunitySidebar blogPosts={blogPosts} stats={feedStats} />
               <CommunityRightPanel blogPosts={blogPosts} stats={feedStats} />
             </div>
-          </div>
-        </div>
-      </main>
-    </div>
+      </div>
+    </FullscreenShell>
   )
 }

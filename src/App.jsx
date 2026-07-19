@@ -1,12 +1,12 @@
-import React, { Suspense, useEffect } from 'react'
+import React, { Suspense, useEffect, useRef, useState } from 'react'
 import useStore from './store/useStore'
 import Scene from './components/scene/Scene'
 import Modal from './components/ui/Modal'
+import MainSceneBackground from './components/ui/MainSceneBackground'
 import LeafyAssistant from './components/ui/LeafyAssistant'
 import ChatBot from './components/ui/ChatBot'
 import ScrollHint from './components/ui/ScrollHint'
 import HUD from './components/ui/HUD'
-import AdminPanel from './components/ui/AdminPanel'
 
 function LoadingScreen() {
   return (
@@ -48,25 +48,50 @@ function LoadingScreen() {
 }
 
 export default function App() {
+  const isModalOpen = useStore((s) => s.isModalOpen)
+  const [sceneBgKey, setSceneBgKey] = useState(0)
+  const wasModalOpen = useRef(false)
+
   useEffect(() => {
     useStore.getState().syncSystemCoins()
-    useStore.getState().loadFromApi()
+    useStore.getState().loadFromApi().then((res) => {
+      if (!res?.ok) {
+        fetch('/wl-config.json?v=' + Date.now())
+          .then((r) => (r.ok ? r.json() : null))
+          .then((data) => {
+            if (data && Object.keys(data).length > 0) useStore.getState().applyRemoteConfig(data)
+            else useStore.getState().syncSystemCoins()
+          })
+          .catch(() => {})
+      }
+    })
   }, [])
+
+  // Remount main Vanta after modal closes; hide 3D scene while modal clouds use WebGL
+  useEffect(() => {
+    if (wasModalOpen.current && !isModalOpen) {
+      setSceneBgKey((k) => k + 1)
+    }
+    wasModalOpen.current = isModalOpen
+  }, [isModalOpen])
 
   return (
     <div className="relative w-screen h-screen overflow-hidden select-none">
-      {/* 3-D Scene */}
-      <Suspense fallback={<LoadingScreen />}>
-        <Scene />
-      </Suspense>
+      {!isModalOpen && <MainSceneBackground key={`scene-bg-${sceneBgKey}`} />}
 
-      {/* UI overlays — always rendered above the canvas */}
-      <HUD />
-      <Modal />
-      <AdminPanel />
-      <LeafyAssistant />
-      <ChatBot />
-      <ScrollHint />
+      <div className="relative z-10 w-full h-full">
+        {!isModalOpen && (
+          <Suspense fallback={<LoadingScreen />}>
+            <Scene />
+          </Suspense>
+        )}
+
+        <HUD />
+        <Modal />
+        <LeafyAssistant />
+        <ChatBot />
+        <ScrollHint />
+      </div>
     </div>
   )
 }

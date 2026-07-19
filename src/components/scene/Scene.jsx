@@ -6,7 +6,6 @@ import { gsap } from 'gsap'
 
 import LifeTree from './LifeTree'
 import OrbitingCoins from './OrbitingCoins'
-import CloudEnvironment from './CloudEnvironment'
 
 import { orbitState } from '../../data/orbitState'
 import useStore from '../../store/useStore'
@@ -464,11 +463,8 @@ function SceneContents() {
   return (
     <>
       <Lighting />
-      <SceneBackground />
-      <SunBurst />
       <LifeTree />
       <OrbitingCoins />
-      <CloudEnvironment />
     </>
   )
 }
@@ -526,13 +522,13 @@ export default function Scene() {
       gl={{
         antialias: true,
         powerPreference: 'high-performance',
-        alpha: false,
+        alpha: true,
       }}
       onCreated={({ gl, scene }) => {
-        gl.setClearColor(new THREE.Color('#3a2214'))
+        gl.setClearColor(0x000000, 0)
         gl.toneMapping = THREE.ACESFilmicToneMapping
         gl.toneMappingExposure = 1.05
-        scene.background = new THREE.Color('#3a2214')
+        scene.background = null
       }}
     >
       <AdaptiveDpr pixelated={false} />

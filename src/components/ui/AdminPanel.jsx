@@ -1,11 +1,21 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { gsap } from 'gsap'
 import useStore from '../../store/useStore'
+import { uploadCoinImageFile } from '../../utils/coinImageUpload'
 import { WL, accountInputCls, accountInputStyle } from '../../styles/modalTheme'
 
 const LOCKED_COIN_IDS = ['shop', 'member']
 const inputCls = accountInputCls
 const inputStyle = accountInputStyle
+
+async function applyCoinImageUpload(coinId, file, setImageUrl) {
+  try {
+    const url = await uploadCoinImageFile(coinId, file)
+    setImageUrl(url)
+  } catch (err) {
+    window.alert(err?.message || 'Kunne ikke uploade billede')
+  }
+}
 
 /* ─── Product editor (used inside ShopAdmin) ─────────────────────────── */
 function ProductEditor({ product, catColor, onSave, onCancel }) {
@@ -403,9 +413,8 @@ function CoinEditor({ coin, onSave, onClose }) {
             </div>
             <input type="file" accept="image/*" className="hidden" onChange={(e) => {
               const file = e.target.files?.[0]; if (!file) return
-              const reader = new FileReader()
-              reader.onload = (ev) => set({ imageUrl: ev.target.result })
-              reader.readAsDataURL(file); e.target.value = ''
+              applyCoinImageUpload(draft.id, file, (url) => set({ imageUrl: url }))
+              e.target.value = ''
             }} />
           </label>
           <input className={inputClass} value={(!draft.imageUrl || draft.imageUrl.startsWith('data:')) ? '' : draft.imageUrl} onChange={(e) => set({ imageUrl: e.target.value })} placeholder="https://example.com/image.png" />
@@ -463,7 +472,7 @@ function CoinEditor({ coin, onSave, onClose }) {
           <span className="text-xl">📁</span>
           <div>
             <div className="text-sm text-white/70">Upload image</div>
-            <div className="text-[10px] text-white/30">PNG, JPG, GIF, WebP — stored as data URL</div>
+            <div className="text-[10px] text-white/30">PNG, JPG, WebP — optimized & saved on server</div>
           </div>
           <input
             type="file"
@@ -472,10 +481,7 @@ function CoinEditor({ coin, onSave, onClose }) {
             onChange={(e) => {
               const file = e.target.files?.[0]
               if (!file) return
-              const reader = new FileReader()
-              reader.onload = (ev) => set({ imageUrl: ev.target.result })
-              reader.readAsDataURL(file)
-              // Reset so same file can be re-selected
+              applyCoinImageUpload(draft.id, file, (url) => set({ imageUrl: url }))
               e.target.value = ''
             }}
           />

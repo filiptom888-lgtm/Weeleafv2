@@ -292,6 +292,8 @@ function wl_save_shop_categories(array $categories): void
 
 function wl_fetch_posts(): array
 {
+    wl_migrate_blog_post_images();
+
     $rows = wl_pdo()->query(
         'SELECT id, author_id, author, title, body, image_url, tags, created_at
          FROM posts ORDER BY created_at DESC'
@@ -351,12 +353,14 @@ function wl_fetch_submissions(?string $userId = null): array
     return $items;
 }
 
+require_once __DIR__ . '/images.php';
+
 function wl_full_config_payload(): array
 {
     return [
-        'coins' => wl_get_config_key('coins', []),
+        'coins' => wl_get_coins_for_api(),
         'stats' => wl_get_config_key('stats', []),
-        'donationConfig' => wl_get_config_key('donation', ['mobilepay' => '', 'link' => '', 'qrImageUrl' => '']),
+        'donationConfig' => wl_get_donation_for_api(),
         'github' => wl_get_config_key('github', ['token' => '', 'owner' => 'filiptom888-lgtm', 'repo' => 'Weeleafv2', 'branch' => 'main']),
         'shopCategories' => wl_fetch_shop_categories(),
         'blogPosts' => wl_fetch_posts(),

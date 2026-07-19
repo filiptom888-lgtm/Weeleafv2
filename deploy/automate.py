@@ -84,6 +84,19 @@ return [
     health = stdout.read().decode()
     print(health or stderr.read().decode())
 
+    print("==> Coin image uploads folder")
+    client.exec_command(f"mkdir -p {remote_base}/uploads/coins && chmod -R 755 {remote_base}/uploads")
+    uploads_htaccess = PROJECT / "uploads" / ".htaccess"
+    if uploads_htaccess.is_file():
+        with SCPClient(client.get_transport()) as scp:
+            scp.put(str(uploads_htaccess), f"{remote_base}/uploads/.htaccess")
+
+    print("==> Migrate coin images to static files")
+    _, stdout, stderr = client.exec_command(
+        f"cd {remote_base}/api && php migrate-coin-images-cli.php"
+    )
+    print(stdout.read().decode() or stderr.read().decode())
+
     print("==> Running install")
     payload = json.dumps({"install_key": INSTALL_KEY})
     _, stdout, _ = client.exec_command(

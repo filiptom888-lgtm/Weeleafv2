@@ -7,3 +7,5 @@ dist
 api/config.local.php
 deploy/*.zip
 deploy/check-remote.php
+uploads/coins/*
+!uploads/coins/.gitkeep

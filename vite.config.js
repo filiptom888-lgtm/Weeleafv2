@@ -13,6 +13,10 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
+      '/uploads': {
+        target: 'https://weeleaf.com',
+        changeOrigin: true,
+      },
     },
   },
 })

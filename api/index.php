@@ -23,8 +23,24 @@ try {
             if (!isset($body['coins']) || !is_array($body['coins'])) {
                 wl_error('coins array påkrævet.');
             }
-            wl_set_config_key('coins', $body['coins']);
-            wl_ok(['coins' => $body['coins']]);
+            $coins = wl_persist_coins($body['coins']);
+            wl_ok(['coins' => $coins]);
+        })(),
+
+        preg_match('#^/coins/([^/]+)/image$#', $uri, $m) && $method === 'POST' => (function () use ($m) {
+            wl_require_auth(true);
+            $coinId = $m[1];
+            if (empty($_FILES['image']) || ($_FILES['image']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+                wl_error('Billede påkrævet (multipart field: image).');
+            }
+            $tmp = $_FILES['image']['tmp_name'];
+            $binary = file_get_contents($tmp);
+            if ($binary === false || $binary === '') {
+                wl_error('Kunne ikke læse uploadet billede.');
+            }
+            $mime = (string) ($_FILES['image']['type'] ?? 'image/webp');
+            $imageUrl = wl_save_coin_image_file($coinId, $binary, $mime);
+            wl_ok(['imageUrl' => $imageUrl, 'coinId' => $coinId]);
         })(),
 
         $uri === '/config/stats' && $method === 'PUT' => (function () {
@@ -89,7 +105,7 @@ try {
                 'author' => $body['author'] ?? $user['name'],
                 'title' => $title,
                 'body' => $text,
-                'image_url' => $body['imageUrl'] ?? '',
+                'image_url' => wl_externalize_image_url((string) ($body['imageUrl'] ?? ''), 'blog', $id, 720),
                 'tags' => json_encode($tags, JSON_UNESCAPED_UNICODE),
             ]);
             wl_ok(['post' => wl_fetch_posts()[0] ?? null], 201);
@@ -110,11 +126,15 @@ try {
             }
             $fields = [];
             $params = ['id' => $id];
-            foreach (['title' => 'title', 'body' => 'body', 'imageUrl' => 'image_url', 'author' => 'author'] as $in => $col) {
+            foreach (['title' => 'title', 'body' => 'body', 'author' => 'author'] as $in => $col) {
                 if (array_key_exists($in, $body)) {
                     $fields[] = "$col = :$col";
                     $params[$col] = $body[$in];
                 }
+            }
+            if (array_key_exists('imageUrl', $body)) {
+                $fields[] = 'image_url = :image_url';
+                $params['image_url'] = wl_externalize_image_url((string) $body['imageUrl'], 'blog', $id, 720);
             }
             if (isset($body['tags']) && is_array($body['tags'])) {
                 $fields[] = 'tags = :tags';

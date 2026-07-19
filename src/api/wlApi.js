@@ -86,6 +86,26 @@ export const api = {
   saveCoins: (coins) =>
     request('/config/coins', { method: 'PUT', body: { coins }, auth: true }),
 
+  uploadCoinImage: async (coinId, blob) => {
+    const form = new FormData()
+    form.append('image', blob, `${coinId}.webp`)
+    const token = getToken()
+    try {
+      const res = await fetch(`${API_BASE}/coins/${encodeURIComponent(coinId)}/image`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: form,
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || data.ok === false) {
+        return { ok: false, error: data.error || `Serverfejl (${res.status})` }
+      }
+      return { ok: true, ...data }
+    } catch {
+      return { ok: false, error: 'Kunne ikke uploade billede.' }
+    }
+  },
+
   saveStats: (stats) =>
     request('/config/stats', { method: 'PUT', body: { stats }, auth: true }),
 

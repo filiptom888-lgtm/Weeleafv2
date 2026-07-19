@@ -2,11 +2,27 @@ import * as THREE from 'three'
 
 const COIN_TEX_SIZE = 256
 const cache = new Map()
+const loader = new THREE.TextureLoader()
 
-/**
- * Rasterize to canvas so orientation matches THREE.TextureLoader (flipY true).
- * Direct ImageBitmap → Texture often renders upside-down on coin faces.
- */
+function configureCoinTexture(texture) {
+  texture.colorSpace = THREE.SRGBColorSpace
+  texture.flipY = true
+  texture.minFilter = THREE.LinearFilter
+  texture.magFilter = THREE.LinearFilter
+  texture.generateMipmaps = false
+  return texture
+}
+
+function storeTexture(url, texture) {
+  configureCoinTexture(texture)
+  cache.set(url, { texture, promise: Promise.resolve(texture) })
+  return texture
+}
+
+function isRemoteUrl(url) {
+  return url.startsWith('http://') || url.startsWith('https://') || url.startsWith('/')
+}
+
 function textureFromImageSource(img) {
   const w = img.width || img.naturalWidth
   const h = img.height || img.naturalHeight
@@ -21,13 +37,7 @@ function textureFromImageSource(img) {
   ctx.drawImage(img, 0, 0, cw, ch)
 
   const texture = new THREE.CanvasTexture(canvas)
-  texture.colorSpace = THREE.SRGBColorSpace
-  texture.flipY = true
-  texture.minFilter = THREE.LinearFilter
-  texture.magFilter = THREE.LinearFilter
-  texture.generateMipmaps = false
-  texture.needsUpdate = true
-  return texture
+  return configureCoinTexture(texture)
 }
 
 async function loadImageSource(url) {
@@ -59,32 +69,39 @@ async function loadImageSource(url) {
   }
 }
 
-async function decodeCoinImage(url) {
+async function decodeDataUrl(url) {
   const source = await loadImageSource(url)
   const texture = textureFromImageSource(source)
   if (source.close) source.close()
   return texture
 }
 
-function storeTexture(url, texture) {
-  cache.set(url, { texture, promise: Promise.resolve(texture) })
-  return texture
+function loadHttpTexture(url) {
+  return new Promise((resolve, reject) => {
+    loader.load(
+      url,
+      (t) => resolve(storeTexture(url, t)),
+      undefined,
+      reject
+    )
+  })
 }
 
-/** Preload a coin image once; downscales to 256px for fast GPU upload. */
+/** Preload a coin image once. HTTP URLs use browser cache + TextureLoader (fast). */
 export function preloadTexture(url) {
   if (!url) return Promise.resolve(null)
   const hit = cache.get(url)
   if (hit?.texture) return hit.promise
   if (hit?.promise) return hit.promise
 
-  const promise = decodeCoinImage(url)
-    .then((t) => storeTexture(url, t))
-    .catch((err) => {
-      cache.delete(url)
-      console.warn('[textureCache] failed', url?.slice?.(0, 48), err)
-      return null
-    })
+  const promise = (isRemoteUrl(url)
+    ? loadHttpTexture(url)
+    : decodeDataUrl(url).then((t) => storeTexture(url, t))
+  ).catch((err) => {
+    cache.delete(url)
+    console.warn('[textureCache] failed', url?.slice?.(0, 64), err)
+    return null
+  })
 
   cache.set(url, { promise })
   return promise
@@ -92,11 +109,13 @@ export function preloadTexture(url) {
 
 export function preloadCoinImages(coins = []) {
   const urls = [...new Set(coins.map((c) => c.imageUrl).filter(Boolean))]
-  if (!urls.length) return Promise.resolve([])
-
-  // Stagger decodes so huge base64 uploads don't freeze the main thread
-  urls.forEach((url, i) => {
-    window.setTimeout(() => preloadTexture(url), i * 40)
+  urls.forEach((url) => {
+    if (isRemoteUrl(url)) {
+      const img = new Image()
+      img.decoding = 'async'
+      img.src = url
+    }
+    preloadTexture(url)
   })
   return Promise.resolve([])
 }
@@ -105,13 +124,6 @@ export function getCachedTexture(url) {
   return cache.get(url)?.texture ?? null
 }
 
-export function areCoinTexturesReady(coins = []) {
-  const urls = coins.map((c) => c.imageUrl).filter(Boolean)
-  if (!urls.length) return true
-  return urls.every((url) => !!getCachedTexture(url))
-}
-
-/** Bust in-memory cache (e.g. after orientation fix in dev). */
 export function clearTextureCache() {
   cache.forEach((entry) => entry.texture?.dispose?.())
   cache.clear()

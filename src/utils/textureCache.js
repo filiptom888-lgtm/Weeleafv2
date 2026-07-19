@@ -93,7 +93,12 @@ export function preloadTexture(url) {
 export function preloadCoinImages(coins = []) {
   const urls = [...new Set(coins.map((c) => c.imageUrl).filter(Boolean))]
   if (!urls.length) return Promise.resolve([])
-  return Promise.all(urls.map(preloadTexture))
+
+  // Stagger decodes so huge base64 uploads don't freeze the main thread
+  urls.forEach((url, i) => {
+    window.setTimeout(() => preloadTexture(url), i * 40)
+  })
+  return Promise.resolve([])
 }
 
 export function getCachedTexture(url) {

@@ -1,15 +1,17 @@
-import React, { Suspense, useEffect } from 'react'
+import React, { Suspense, lazy, useEffect } from 'react'
 import useStore from './store/useStore'
-import Scene from './components/scene/Scene'
-import Modal from './components/ui/Modal'
 import MainSceneBackground from './components/ui/MainSceneBackground'
 import ModalSceneBackground from './components/ui/ModalSceneBackground'
 import SceneTransition from './components/ui/SceneTransition'
-import LeafyAssistant from './components/ui/LeafyAssistant'
-import ChatBot from './components/ui/ChatBot'
 import ScrollHint from './components/ui/ScrollHint'
 import HUD from './components/ui/HUD'
+import { deferNonCritical } from './hooks/useLiteGraphics'
 import { preloadCoinImages } from './utils/textureCache'
+
+const Scene = lazy(() => import('./components/scene/Scene'))
+const Modal = lazy(() => import('./components/ui/Modal'))
+const LeafyAssistant = lazy(() => import('./components/ui/LeafyAssistant'))
+const ChatBot = lazy(() => import('./components/ui/ChatBot'))
 
 function LoadingScreen() {
   return (
@@ -41,29 +43,15 @@ export default function App() {
   useEffect(() => {
     const store = useStore.getState()
     store.syncSystemCoins()
-    preloadCoinImages(store.coins)
 
-    store.loadFromApi().then((res) => {
-      preloadCoinImages(useStore.getState().coins)
-      if (!res?.ok) {
-        fetch('/wl-config.json?v=' + Date.now())
-          .then((r) => (r.ok ? r.json() : null))
-          .then((data) => {
-            if (data && Object.keys(data).length > 0) {
-              useStore.getState().applyRemoteConfig(data)
-              preloadCoinImages(useStore.getState().coins)
-            } else {
-              useStore.getState().syncSystemCoins()
-            }
-          })
-          .catch(() => {})
-      }
+    store.loadFromApi().then(() => {
+      deferNonCritical(() => preloadCoinImages(useStore.getState().coins))
     })
   }, [])
 
   return (
     <div className="relative w-screen h-screen overflow-hidden select-none">
-      <MainSceneBackground visible={sceneVisible} />
+      <MainSceneBackground visible={sceneVisible} paused={isModalOpen} />
 
       <div
         className="absolute inset-0 z-10"
@@ -82,9 +70,11 @@ export default function App() {
 
       <SceneTransition />
       <ModalSceneBackground />
-      <Modal />
-      <LeafyAssistant />
-      <ChatBot />
+      <Suspense fallback={null}>
+        <Modal />
+        <LeafyAssistant />
+        <ChatBot />
+      </Suspense>
     </div>
   )
 }

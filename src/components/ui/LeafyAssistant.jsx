@@ -1,14 +1,15 @@
 import React, { useState, useCallback } from 'react'
 import useStore from '../../store/useStore'
-import leafyGif from '../../../img/leafy.gif'
 
 function LeafyImg({ size = 72 }) {
   return (
     <img
-      src={leafyGif}
+      src="/leafy.gif"
       width={size}
       height={size}
       alt="Leafy"
+      loading="lazy"
+      decoding="async"
       draggable={false}
       style={{
         filter: 'drop-shadow(0 0 12px rgba(74,222,128,0.75))',

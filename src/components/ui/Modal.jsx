@@ -4,29 +4,22 @@ import ShopModal from './ShopModal'
 import CommunityModal from './CommunityModal'
 import MemberModal from './MemberModal'
 import FullscreenShell from './FullscreenShell'
-import { WL, glassStyle } from '../../styles/modalTheme'
+import { WL, glassStyle, modalPad } from '../../styles/modalTheme'
 
 function ContentRenderer({ content, accent }) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {content.sections?.map((section, i) => (
         <section
           key={i}
-          className="rounded-xl p-5 md:p-6"
-          style={{
-            background: 'rgba(255,255,255,0.55)',
-            border: '1px solid rgba(255,255,255,0.65)',
-          }}
+          className={i > 0 ? 'pt-8 border-t' : ''}
+          style={i > 0 ? { borderColor: WL.borderLight } : undefined}
         >
           {section.heading && (
             <h2
-              className="text-base font-semibold mb-3 flex items-center gap-2"
+              className="text-base md:text-lg font-semibold mb-3 leading-snug"
               style={{ color: WL.textOnModal }}
             >
-              <span
-                className="w-1 h-5 rounded-full flex-shrink-0"
-                style={{ background: accent }}
-              />
               {section.heading}
             </h2>
           )}
@@ -41,14 +34,14 @@ function ContentRenderer({ content, accent }) {
           )}
 
           {section.items && (
-            <ul className="space-y-3 mt-1">
+            <ul className={`space-y-2.5 ${section.text ? 'mt-4' : 'mt-1'}`}>
               {section.items.map((item, j) => (
                 <li
                   key={j}
-                  className="rounded-lg px-4 py-3"
+                  className="rounded-xl px-4 py-3"
                   style={{
-                    background: 'rgba(255,255,255,0.7)',
-                    borderLeft: `3px solid ${accent}`,
+                    background: 'rgba(255,255,255,0.65)',
+                    border: `1px solid ${WL.borderLight}`,
                   }}
                 >
                   <div className="font-medium text-[15px]" style={{ color: WL.textOnModal }}>
@@ -74,7 +67,10 @@ function ContentRenderer({ content, accent }) {
           )}
 
           {section.socials && (
-            <ul className="rounded-xl overflow-hidden divide-y mt-1" style={{ border: `1px solid rgba(59,130,180,0.15)` }}>
+            <ul
+              className="rounded-xl overflow-hidden divide-y mt-3"
+              style={{ border: `1px solid ${WL.borderLight}` }}
+            >
               {section.socials.map((s, j) => (
                 <li key={j}>
                   <a
@@ -100,7 +96,7 @@ function ContentRenderer({ content, accent }) {
               href={section.link.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-block text-sm font-semibold mt-2"
+              className="inline-block text-sm font-semibold mt-3"
               style={{ color: WL.skyAccent }}
             >
               {section.link.text} →
@@ -110,11 +106,11 @@ function ContentRenderer({ content, accent }) {
           {section.cta && (
             <a
               href={`mailto:${section.cta.email}`}
-              className="inline-block mt-3 px-5 py-2.5 text-sm font-semibold rounded-full transition-opacity hover:opacity-90"
+              className="inline-block mt-4 px-5 py-2.5 text-sm font-semibold rounded-full transition-opacity hover:opacity-90"
               style={{
-                background: WL.skyAccent,
+                background: accent || WL.skyAccent,
                 color: '#fff',
-                boxShadow: '0 4px 16px rgba(43,108,176,0.3)',
+                boxShadow: '0 4px 16px rgba(61, 158, 95, 0.25)',
               }}
             >
               {section.cta.text}
@@ -149,12 +145,12 @@ export default function Modal() {
 
   return (
     <FullscreenShell onClose={closeModal} contentClassName="max-w-3xl" headerLayout="none">
-      <div className="rounded-2xl overflow-hidden" style={glassStyle}>
+      <div className="w-full rounded-2xl overflow-hidden" style={glassStyle}>
         <div
-          className="px-6 md:px-10 pt-8 pb-6"
+          className={`${modalPad} pt-6 pb-5 md:pt-7 md:pb-6`}
           style={{
             background: `linear-gradient(135deg, ${accent}18, rgba(255,255,255,0.5))`,
-            borderBottom: '1px solid rgba(255,255,255,0.6)',
+            borderBottom: `1px solid ${WL.borderLight}`,
           }}
         >
           <p className="text-[10px] uppercase tracking-[0.22em] font-semibold mb-2" style={{ color: WL.skyAccent }}>
@@ -170,13 +166,13 @@ export default function Modal() {
           )}
         </div>
 
-        <div className="px-6 md:px-10 py-7 md:py-8">
+        <div className={`${modalPad} py-6 md:py-7`}>
           <ContentRenderer content={activeCoin.content} accent={accent} />
 
           {activeCoin.id === 'donations' && (donationConfig.mobilepay || donationConfig.link || donationConfig.qrImageUrl) && (
             <section
-              className="mt-8 pt-6 space-y-5 rounded-xl p-5"
-              style={{ background: 'rgba(255,255,255,0.55)', border: '1px solid rgba(255,255,255,0.65)' }}
+              className="mt-8 pt-6 space-y-5 border-t"
+              style={{ borderColor: WL.borderLight }}
             >
               <h2 className="text-base font-semibold" style={{ color: WL.textOnModal }}>
                 Betal nu
@@ -188,7 +184,7 @@ export default function Modal() {
                     src={donationConfig.qrImageUrl}
                     alt="MobilePay QR"
                     className="w-48 h-48 object-contain rounded-xl bg-white p-2"
-                    style={{ border: `1px solid rgba(59,130,180,0.2)` }}
+                    style={{ border: `1px solid ${WL.borderLight}` }}
                   />
                   <p className="text-sm" style={{ color: WL.textSoftOnModal }}>Scan QR-koden med MobilePay</p>
                 </div>

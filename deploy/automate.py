@@ -53,6 +53,10 @@ def main() -> int:
     with SCPClient(client.get_transport()) as scp:
         scp.put(str(PROJECT / "dist" / "index.html"), f"{remote_base}/index.html")
         scp.put(str(PROJECT / "dist" / "assets"), remote_base, recursive=True)
+        for extra in (".htaccess", "favicon.svg", "leafy.gif"):
+            path = PROJECT / "dist" / extra
+            if path.is_file():
+                scp.put(str(path), f"{remote_base}/{extra}")
 
         print("==> Uploading API")
         scp.put(str(PROJECT / "api"), remote_base, recursive=True)

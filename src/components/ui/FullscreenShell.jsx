@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react'
 import { gsap } from 'gsap'
 import useStore from '../../store/useStore'
+import { WL } from '../../styles/modalTheme'
 
 /**
  * Fullscreen overlay chrome — background is shared ModalSceneBackground in App.jsx.
@@ -51,7 +52,16 @@ export default function FullscreenShell({
     })
   }
 
-  const maxW = contentClassName === 'max-w-7xl' ? 'max-w-7xl' : contentClassName === 'max-w-5xl' ? 'max-w-5xl' : 'max-w-5xl'
+  const maxW =
+    contentClassName === 'max-w-7xl'
+      ? 'max-w-7xl'
+      : contentClassName === 'max-w-5xl'
+        ? 'max-w-5xl'
+        : contentClassName === 'max-w-3xl'
+          ? 'max-w-3xl'
+          : contentClassName === 'max-w-lg'
+            ? 'max-w-lg'
+            : 'max-w-5xl'
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col min-h-0 overflow-hidden pointer-events-none">
@@ -72,7 +82,7 @@ export default function FullscreenShell({
         </button>
 
         {headerLayout === 'pill' && title && (
-          <div className={`flex-shrink-0 px-4 md:px-8 pt-5 pb-1 mx-auto w-full ${maxW}`}>
+          <div className={`flex-shrink-0 px-3 sm:px-4 md:px-5 pt-5 pb-1 mx-auto w-full ${maxW}`}>
             <div
               className="inline-flex flex-col gap-0.5 max-w-[calc(100%-3rem)] rounded-2xl px-4 py-3 backdrop-blur-xl"
               style={{
@@ -82,7 +92,7 @@ export default function FullscreenShell({
               }}
             >
               {eyebrow && (
-                <span className="text-[10px] uppercase tracking-[0.22em] font-semibold text-[#2b6cb0]">
+                <span className="text-[10px] uppercase tracking-[0.22em] font-semibold" style={{ color: WL.skyAccent }}>
                   {eyebrow}
                 </span>
               )}
@@ -99,8 +109,8 @@ export default function FullscreenShell({
 
         <main ref={scrollRef} className="flex-1 overflow-y-auto min-h-0">
           <div
-            className={`mx-auto px-4 md:px-8 ${
-              headerLayout === 'pill' ? 'py-4 md:py-5' : 'py-6 md:py-8'
+            className={`mx-auto w-full px-3 sm:px-4 md:px-5 ${
+              headerLayout === 'pill' ? 'py-4 md:py-5' : 'py-5 md:py-6'
             } ${contentClassName}`}
           >
             {children}

@@ -60,8 +60,8 @@ html, body, #root {
   border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
-/* Modal popup — CSS-only sky on mobile / low-power (no WebGL) */
-@keyframes modalSkyDrift {
+/* CSS-only sky on mobile / low-power (no WebGL) */
+@keyframes skyDrift {
   0%, 100% {
     background-position: 50% 0%;
   }
@@ -70,7 +70,12 @@ html, body, #root {
   }
 }
 
+.sky-lite {
+  background-size: 200% 200% !important;
+  animation: skyDrift 32s ease-in-out infinite;
+}
+
 .modal-sky-lite {
   background-size: 200% 200% !important;
-  animation: modalSkyDrift 28s ease-in-out infinite;
+  animation: skyDrift 28s ease-in-out infinite;
 }

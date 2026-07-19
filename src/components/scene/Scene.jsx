@@ -9,16 +9,17 @@ import OrbitingCoins from './OrbitingCoins'
 
 import { orbitState } from '../../data/orbitState'
 import useStore from '../../store/useStore'
+import { useGraphicsTier } from '../../hooks/useLiteGraphics'
 
-function Lighting() {
+function Lighting({ shadows }) {
   return (
     <>
       <ambientLight intensity={0.7} />
       <directionalLight
         position={[8, 18, 6]}
         intensity={1.4}
-        castShadow
-        shadow-mapSize={[512, 512]}
+        castShadow={shadows}
+        shadow-mapSize={shadows ? [512, 512] : undefined}
         shadow-camera-far={50}
         shadow-camera-left={-15}
         shadow-camera-right={15}
@@ -459,10 +460,10 @@ function Mountains() {
   )
 }
 
-function SceneContents() {
+function SceneContents({ shadows }) {
   return (
     <>
-      <Lighting />
+      <Lighting shadows={shadows} />
       <LifeTree />
       <OrbitingCoins />
     </>
@@ -471,6 +472,9 @@ function SceneContents() {
 
 export default function Scene() {
   const isModalOpen = useStore((s) => s.isModalOpen)
+  const tier = useGraphicsTier()
+  const reducedQuality = tier !== 'full'
+  const shadows = !reducedQuality
 
   useEffect(() => {
     const isModalOpen = () => useStore.getState().isModalOpen
@@ -519,12 +523,13 @@ export default function Scene() {
   return (
     <Canvas
       frameloop={isModalOpen ? 'never' : 'always'}
+      dpr={reducedQuality ? [1, 1.25] : [1, 2]}
       camera={{ position: [0, 1.5, 15], fov: 50, near: 0.1, far: 100 }}
-      shadows
+      shadows={shadows}
       style={{ position: 'absolute', inset: 0 }}
       gl={{
-        antialias: true,
-        powerPreference: 'high-performance',
+        antialias: !reducedQuality,
+        powerPreference: reducedQuality ? 'default' : 'high-performance',
         alpha: true,
       }}
       onCreated={({ gl, scene }) => {
@@ -534,9 +539,9 @@ export default function Scene() {
         scene.background = null
       }}
     >
-      <AdaptiveDpr pixelated={false} />
+      <AdaptiveDpr pixelated={reducedQuality} />
       <AdaptiveEvents />
-      <SceneContents />
+      <SceneContents shadows={shadows} />
     </Canvas>
   )
 }

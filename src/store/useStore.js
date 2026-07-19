@@ -83,7 +83,6 @@ const useStore = create((set, get) => ({
 
     set(patch)
     get().syncSystemCoins()
-    preloadCoinImages(get().coins)
 
     if (getToken()) {
       const me = await api.me()

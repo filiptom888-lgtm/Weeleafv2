@@ -3,10 +3,9 @@ import * as THREE from 'three'
 
 const LOADERS = {
   clouds: () => import('vanta/dist/vanta.clouds.min'),
-  birds: () => import('vanta/dist/vanta.birds.min'),
 }
 
-const INIT_DELAY_MS = { clouds: 0, birds: 350, cloudsBlue: 120 }
+const INIT_DELAY_MS = { clouds: 0, cloudsLight: 120 }
 
 /** WeeLeaf-tuned palettes — see https://www.vantajs.com */
 export const VANTA_PRESETS = {
@@ -29,10 +28,10 @@ export const VANTA_PRESETS = {
     sunlightColor: 0xffd080,
   },
   /**
-   * Fullscreen modals — lighter clouds, no mouse/scroll parallax (major scroll lag fix).
-   * Higher scale = fewer pixels rendered (Vanta default scale is 3).
+   * Modal popups — same warm palette as main page, but lighter and softer.
+   * No mouse parallax; higher scale = fewer pixels (performance).
    */
-  cloudsBlue: {
+  cloudsLight: {
     mouseControls: false,
     touchControls: false,
     gyroControls: false,
@@ -42,33 +41,12 @@ export const VANTA_PRESETS = {
     speed: 0.38,
     scale: 6,
     scaleMobile: 16,
-    skyColor: 0x68b8eb,
-    cloudColor: 0xffffff,
-    cloudShadowColor: 0x2a7ab8,
-    sunColor: 0xffe9a8,
-    sunGlareColor: 0xffd060,
-    sunlightColor: 0xfff8e0,
-  },
-  birds: {
-    mouseControls: true,
-    touchControls: true,
-    gyroControls: false,
-    minHeight: 200,
-    minWidth: 200,
-    scale: 1.0,
-    scaleMobile: 1.0,
-    backgroundColor: 0xc9956a,
-    backgroundAlpha: 0,
-    color1: 0x1a1208,
-    color2: 0xfff5e8,
-    colorMode: 'variance',
-    birdSize: 1.35,
-    wingSpan: 32,
-    speedLimit: 4,
-    separation: 20,
-    alignment: 20,
-    cohesion: 20,
-    quantity: 5,
+    skyColor: 0xedd4b0,
+    cloudColor: 0xfffbf5,
+    cloudShadowColor: 0xc9a080,
+    sunColor: 0xffd99a,
+    sunGlareColor: 0xffc878,
+    sunlightColor: 0xfff0c8,
   },
 }
 

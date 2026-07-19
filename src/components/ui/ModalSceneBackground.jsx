@@ -2,45 +2,24 @@ import { useEffect, useState } from 'react'
 import useStore from '../../store/useStore'
 import VantaBackground from './VantaBackground'
 import { WL } from '../../styles/modalTheme'
-
-function useLiteModalSky() {
-  const [liteSky, setLiteSky] = useState(false)
-
-  useEffect(() => {
-    const pickLite = () => {
-      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-      const narrow = window.innerWidth < 768
-      const lowCpu = (navigator.hardwareConcurrency || 8) <= 4
-      setLiteSky(reduced || narrow || lowCpu)
-    }
-    pickLite()
-    window.addEventListener('resize', pickLite)
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
-    mq.addEventListener('change', pickLite)
-    return () => {
-      window.removeEventListener('resize', pickLite)
-      mq.removeEventListener('change', pickLite)
-    }
-  }, [])
-
-  return liteSky
-}
+import { useGraphicsTier } from '../../hooks/useLiteGraphics'
 
 /**
- * Single shared blue-sky layer for ALL popups — Vanta loads once, stays mounted.
- * Shown/hidden with opacity when any modal opens; no reload per popup.
+ * Shared warm-sky layer for all popups — Vanta loads once, stays mounted.
+ * Falls back to CSS gradient on low-GPU / older PCs.
  */
 export default function ModalSceneBackground() {
   const isModalOpen = useStore((s) => s.isModalOpen)
   const modalScrollRoot = useStore((s) => s.modalScrollRoot)
-  const liteSky = useLiteModalSky()
+  const tier = useGraphicsTier()
+  const useVanta = tier === 'full'
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
-    if (liteSky) return undefined
+    if (!useVanta) return undefined
     const t = window.setTimeout(() => setReady(true), 1200)
     return () => window.clearTimeout(t)
-  }, [liteSky])
+  }, [useVanta])
 
   return (
     <div
@@ -53,13 +32,13 @@ export default function ModalSceneBackground() {
       aria-hidden={!isModalOpen}
     >
       <div
-        className={`absolute inset-0 ${liteSky ? 'modal-sky-lite' : ''}`}
+        className={`absolute inset-0 ${!useVanta ? 'sky-lite modal-sky-lite' : ''}`}
         style={{ background: WL.modalBackdrop }}
       />
-      {!liteSky && (
+      {useVanta && (
         <VantaBackground
           effect="clouds"
-          preset="cloudsBlue"
+          preset="cloudsLight"
           enabled={ready}
           persistent
           paused={!isModalOpen}
@@ -70,7 +49,7 @@ export default function ModalSceneBackground() {
         className="absolute inset-0 z-[2]"
         style={{
           background:
-            'linear-gradient(180deg, rgba(255,255,255,0.1) 0%, rgba(30,90,140,0.04) 100%)',
+            'linear-gradient(180deg, rgba(255,255,255,0.12) 0%, rgba(200, 144, 74, 0.06) 100%)',
         }}
       />
     </div>

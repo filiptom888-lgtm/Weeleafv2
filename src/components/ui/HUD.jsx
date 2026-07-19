@@ -120,16 +120,6 @@ export default function HUD() {
 
       {/* ── Stats counter bar ── */}
       <StatsBar visible={!isModalOpen} />
-
-      {/* ── Bottom center — coin count ── */}
-      {!isModalOpen && (
-        <div
-          className="fixed bottom-4 left-1/2 -translate-x-1/2 z-30 text-[10px] tracking-widest uppercase pointer-events-none"
-          style={{ color: 'rgba(255,255,255,0.3)' }}
-        >
-          {coins.length} nodes orbiting
-        </div>
-      )}
     </>
   )
 }

@@ -1,20 +1,31 @@
 import VantaBackground from './VantaBackground'
+import { WL } from '../../styles/modalTheme'
+import { useGraphicsTier } from '../../hooks/useLiteGraphics'
 
-/**
- * Layered main-page backdrop: warm clouds + bird flock on top.
- */
-export default function MainSceneBackground({ visible = true }) {
+/** Main-page backdrop — warm sunset clouds, CSS fallback on weak GPUs. */
+export default function MainSceneBackground({ visible = true, paused = false }) {
+  const tier = useGraphicsTier()
+  const useVanta = tier === 'full'
+  const vantaPaused = paused || !visible
+
   return (
     <div className="fixed inset-0 z-0" aria-hidden>
-      <VantaBackground effect="clouds" preset="clouds" className="absolute inset-0" visible={visible} />
+      {!useVanta && (
+        <div
+          className="absolute inset-0 sky-lite"
+          style={{ background: WL.pageBg }}
+        />
+      )}
 
-      <VantaBackground
-        effect="birds"
-        preset="birds"
-        className="absolute inset-0"
-        style={{ zIndex: 2, pointerEvents: 'none' }}
-        visible={visible}
-      />
+      {useVanta && (
+        <VantaBackground
+          effect="clouds"
+          preset="clouds"
+          className="absolute inset-0"
+          visible={visible}
+          paused={vantaPaused}
+        />
+      )}
 
       <div
         className="absolute inset-0 pointer-events-none"

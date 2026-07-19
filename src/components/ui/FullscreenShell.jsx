@@ -22,15 +22,34 @@ export default function FullscreenShell({
   const uiRef = useRef()
   const scrollRef = useRef(null)
   const [vantaReady, setVantaReady] = useState(false)
+  const [liteSky, setLiteSky] = useState(false)
   const revealScene = useStore((s) => s.revealScene)
 
   useEffect(() => {
+    const pickLite = () => {
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      const narrow = window.innerWidth < 768
+      const lowCpu = (navigator.hardwareConcurrency || 8) <= 4
+      setLiteSky(reduced || narrow || lowCpu)
+    }
+    pickLite()
+    window.addEventListener('resize', pickLite)
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+    mq.addEventListener('change', pickLite)
+    return () => {
+      window.removeEventListener('resize', pickLite)
+      mq.removeEventListener('change', pickLite)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (liteSky) return undefined
     const t = window.setTimeout(() => setVantaReady(true), 80)
     return () => {
       window.clearTimeout(t)
       setVantaReady(false)
     }
-  }, [])
+  }, [liteSky])
 
   useEffect(() => {
     if (uiRef.current) {
@@ -61,13 +80,18 @@ export default function FullscreenShell({
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col min-h-0 overflow-hidden">
-      <div className="absolute inset-0 z-0" style={{ background: WL.modalBackdrop }} />
-      <VantaBackground
-        effect="clouds"
-        preset="cloudsBlue"
-        enabled={vantaReady}
-        pauseOnScrollRef={scrollRef}
+      <div
+        className={`absolute inset-0 z-0 ${liteSky ? 'modal-sky-lite' : ''}`}
+        style={{ background: WL.modalBackdrop }}
       />
+      {!liteSky && (
+        <VantaBackground
+          effect="clouds"
+          preset="cloudsBlue"
+          enabled={vantaReady}
+          pauseOnScrollRef={scrollRef}
+        />
+      )}
       <div
         className="absolute inset-0 z-[2] pointer-events-none"
         style={{

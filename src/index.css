@@ -59,3 +59,18 @@ html, body, #root {
   -webkit-backdrop-filter: blur(24px);
   border: 1px solid rgba(255, 255, 255, 0.12);
 }
+
+/* Modal popup — CSS-only sky on mobile / low-power (no WebGL) */
+@keyframes modalSkyDrift {
+  0%, 100% {
+    background-position: 50% 0%;
+  }
+  50% {
+    background-position: 52% 100%;
+  }
+}
+
+.modal-sky-lite {
+  background-size: 200% 200% !important;
+  animation: modalSkyDrift 28s ease-in-out infinite;
+}

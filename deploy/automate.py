@@ -93,7 +93,7 @@ return [
 
     print("==> Migrate coin images to static files")
     _, stdout, stderr = client.exec_command(
-        f"cd {remote_base}/api && php migrate-coin-images-cli.php"
+        f"cd {remote_base}/api && php restore-coin-images-cli.php 2>&1"
     )
     print(stdout.read().decode() or stderr.read().decode())
 

@@ -77,9 +77,10 @@ async function decodeDataUrl(url) {
 }
 
 function loadHttpTexture(url) {
+  const absolute = url.startsWith('/') ? `${window.location.origin}${url}` : url
   return new Promise((resolve, reject) => {
     loader.load(
-      url,
+      absolute,
       (t) => resolve(storeTexture(url, t)),
       undefined,
       reject
@@ -113,7 +114,7 @@ export function preloadCoinImages(coins = []) {
     if (isRemoteUrl(url)) {
       const img = new Image()
       img.decoding = 'async'
-      img.src = url
+      img.src = url.startsWith('/') ? `${window.location.origin}${url}` : url
     }
     preloadTexture(url)
   })

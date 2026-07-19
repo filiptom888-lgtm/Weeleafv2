@@ -6,4 +6,13 @@ export default defineConfig({
   optimizeDeps: {
     include: ['three', '@react-three/fiber', '@react-three/drei'],
   },
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
+    },
+  },
 })

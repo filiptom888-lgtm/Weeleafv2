@@ -2,30 +2,37 @@ import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { gsap } from 'gsap'
 import useStore from '../../store/useStore'
 
-// ─── CHANGE THIS to update the admin password ────────────────────────────────
-const ADMIN_PASSWORD = '1234'
-// ────────────────────────────────────────────────────────────────────────────
-
-const SESSION_KEY = 'wl_admin_auth'
 const LOCKED_COIN_IDS = ['shop', 'member'] // coins that can only have their image changed
 
 function useAdminAuth() {
-  const [authed, setAuthed] = useState(() => sessionStorage.getItem(SESSION_KEY) === '1')
-  const login = (pw) => {
-    if (pw === ADMIN_PASSWORD) { sessionStorage.setItem(SESSION_KEY, '1'); setAuthed(true); return true }
-    return false
+  const adminLogin = useStore((s) => s.adminLogin)
+  const logoutUser = useStore((s) => s.logoutUser)
+  const currentUser = useStore((s) => s.currentUser)
+  const authed = currentUser?.role === 'admin'
+
+  const login = async (pw) => {
+    const res = await adminLogin(pw)
+    return res.ok
   }
-  const logout = () => { sessionStorage.removeItem(SESSION_KEY); setAuthed(false) }
+
+  const logout = () => {
+    logoutUser()
+  }
+
   return { authed, login, logout }
 }
 
 function AdminLoginGate({ onAuth }) {
   const [pw, setPw] = useState('')
   const [err, setErr] = useState(false)
+  const [loading, setLoading] = useState(false)
   const inputRef = useRef()
   useEffect(() => { inputRef.current?.focus() }, [])
-  const submit = () => {
-    if (!onAuth(pw)) { setErr(true); setPw('') }
+  const submit = async () => {
+    setLoading(true)
+    const ok = await onAuth(pw)
+    setLoading(false)
+    if (!ok) { setErr(true); setPw('') }
   }
   return (
     <div className="flex flex-col items-center justify-center h-full min-h-[400px] gap-5 px-6">
@@ -48,7 +55,8 @@ function AdminLoginGate({ onAuth }) {
         {err && <p className="text-center text-xs text-red-400">Forkert adgangskode</p>}
         <button
           onClick={submit}
-          className="w-full py-2.5 rounded-xl text-sm font-bold text-white transition-all"
+          disabled={loading}
+          className="w-full py-2.5 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-50"
           style={{ background: 'rgba(74,222,128,0.22)', border: '1px solid rgba(74,222,128,0.4)', color: '#86efac' }}
         >Godkend →</button>
       </div>
@@ -673,14 +681,14 @@ function BlogAdmin() {
   }
   const closeEditor = () => { setDraft(null); setEditingId(null); setIsNew(false) }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!draft?.title?.trim()) return
     const post = {
       ...draft,
       tags: draft.tags ? draft.tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
     }
-    if (isNew) addBlogPost(post)
-    else updateBlogPost(post.id, post)
+    if (isNew) await addBlogPost(post)
+    else await updateBlogPost(post.id, post)
     closeEditor()
   }
 
@@ -963,12 +971,6 @@ function DonationAdmin() {
   )
 }
 /* ─── GitHub publish admin ───────────────────────────────────────────── */
-const GH_SETTINGS_KEY = 'wl_gh_settings'
-const DEFAULT_GH = { token: '', owner: 'filiptom888-lgtm', repo: 'Weeleafv2', branch: 'main' }
-
-function loadGhSettings() {
-  try { const r = localStorage.getItem(GH_SETTINGS_KEY); return r ? { ...DEFAULT_GH, ...JSON.parse(r) } : DEFAULT_GH } catch { return DEFAULT_GH }
-}
 
 async function publishConfigToGitHub({ token, owner, repo, branch }, config) {
   const path = 'public/wl-config.json'
@@ -993,24 +995,21 @@ async function publishConfigToGitHub({ token, owner, repo, branch }, config) {
 }
 
 function PublishAdmin() {
-  const [settings, setSettings] = useState(loadGhSettings)
+  const githubSettings = useStore((s) => s.githubSettings)
+  const setGithubSettings = useStore((s) => s.setGithubSettings)
   const [status, setStatus] = useState('idle') // idle | loading | ok | error
   const [errMsg, setErrMsg] = useState('')
   const [showToken, setShowToken] = useState(false)
   const inputCls = 'w-full text-sm rounded-lg px-3 py-2 text-white/85 placeholder-white/25 outline-none border bg-white/5 border-white/10 focus:border-green-400/40 transition-colors'
 
-  const save = (patch) => {
-    const updated = { ...settings, ...patch }
-    setSettings(updated)
-    try { localStorage.setItem(GH_SETTINGS_KEY, JSON.stringify(updated)) } catch {}
-  }
+  const save = (patch) => setGithubSettings(patch)
 
   const handlePublish = async () => {
-    if (!settings.token) { setErrMsg('Indsæt dit GitHub token først'); setStatus('error'); return }
+    if (!githubSettings.token) { setErrMsg('Indsæt dit GitHub token først'); setStatus('error'); return }
     setStatus('loading'); setErrMsg('')
     try {
       const { coins, shopCategories, blogPosts, donationConfig } = useStore.getState()
-      await publishConfigToGitHub(settings, { coins, shopCategories, blogPosts, donationConfig })
+      await publishConfigToGitHub(githubSettings, { coins, shopCategories, blogPosts, donationConfig })
       setStatus('ok')
       setTimeout(() => setStatus('idle'), 4000)
     } catch (e) {
@@ -1038,29 +1037,29 @@ function PublishAdmin() {
           <input
             className={inputCls}
             type={showToken ? 'text' : 'password'}
-            value={settings.token}
+            value={githubSettings.token}
             onChange={(e) => save({ token: e.target.value })}
             placeholder="ghp_xxxxxxxxxxxx"
           />
           <button onClick={() => setShowToken(s => !s)} className="px-2 text-white/30 hover:text-white/60 text-xs">{showToken ? '🙈' : '👁'}</button>
         </div>
-        <p className="text-[10px] text-white/25 mt-1">Gemmes kun i din browser. Vælg scope: <code className="text-white/40">repo</code> (eller <code className="text-white/40">contents:write</code> for fine-grained).</p>
+        <p className="text-[10px] text-white/25 mt-1">Gemmes i databasen. Vælg scope: <code className="text-white/40">repo</code> (eller <code className="text-white/40">contents:write</code> for fine-grained).</p>
       </div>
 
       {/* Repo settings */}
       <div className="grid grid-cols-2 gap-2">
         <div>
           <label className="block text-white/50 text-xs mb-1">GitHub bruger / org</label>
-          <input className={inputCls} value={settings.owner} onChange={(e) => save({ owner: e.target.value })} placeholder="filiptom888-lgtm" />
+          <input className={inputCls} value={githubSettings.owner} onChange={(e) => save({ owner: e.target.value })} placeholder="filiptom888-lgtm" />
         </div>
         <div>
           <label className="block text-white/50 text-xs mb-1">Repository navn</label>
-          <input className={inputCls} value={settings.repo} onChange={(e) => save({ repo: e.target.value })} placeholder="Weeleafv2" />
+          <input className={inputCls} value={githubSettings.repo} onChange={(e) => save({ repo: e.target.value })} placeholder="Weeleafv2" />
         </div>
       </div>
       <div>
         <label className="block text-white/50 text-xs mb-1">Branch</label>
-        <input className={inputCls} value={settings.branch} onChange={(e) => save({ branch: e.target.value })} placeholder="main" />
+        <input className={inputCls} value={githubSettings.branch} onChange={(e) => save({ branch: e.target.value })} placeholder="main" />
       </div>
 
       {/* Publish button */}

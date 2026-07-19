@@ -1,0 +1,14 @@
+<?php
+/**
+ * Copy to config.local.php and fill in your Hostinger credentials.
+ * Never commit config.local.php to git.
+ */
+return [
+    'db_host' => 'localhost',
+    'db_name' => 'u769128625_weeleaf',
+    'db_user' => 'u769128625_weeleaf_app',
+    'db_pass' => 'YOUR_DATABASE_PASSWORD_HERE',
+    'admin_password' => '1234',
+    'install_key' => 'change-me-before-install',
+    'cors_origin' => '*',
+];

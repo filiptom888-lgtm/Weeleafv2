@@ -53,19 +53,22 @@ function AuthGate({ coin, onSuccess }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
   const emailRef = useRef()
 
   useEffect(() => {
     emailRef.current?.focus()
   }, [mode])
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault()
     setError('')
+    setLoading(true)
     const result =
       mode === 'login'
-        ? loginUser({ email, password })
-        : registerUser({ name, email, password })
+        ? await loginUser({ email, password })
+        : await registerUser({ name, email, password })
+    setLoading(false)
     if (result.ok) onSuccess()
     else setError(result.error)
   }
@@ -168,7 +171,8 @@ function AuthGate({ coin, onSuccess }) {
 
           <button
             type="submit"
-            className="w-full py-3.5 rounded-xl text-sm font-bold text-white transition-all hover:opacity-95 active:scale-[0.99]"
+            disabled={loading}
+            className="w-full py-3.5 rounded-xl text-sm font-bold text-white transition-all hover:opacity-95 active:scale-[0.99] disabled:opacity-50"
             style={{
               background: `linear-gradient(135deg, ${coin.color}, ${coin.emissiveColor})`,
               boxShadow: `0 8px 28px ${coin.color}44`,
@@ -227,7 +231,7 @@ function UserBlogAdmin({ coin, currentUser }) {
     setIsNew(false)
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!draft?.title?.trim()) return
     const post = {
       ...draft,
@@ -235,8 +239,8 @@ function UserBlogAdmin({ coin, currentUser }) {
       authorId: currentUser.id,
       tags: draft.tags ? draft.tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
     }
-    if (isNew) addBlogPost(post)
-    else updateBlogPost(post.id, post)
+    if (isNew) await addBlogPost(post)
+    else await updateBlogPost(post.id, post)
     closeEditor()
   }
 
@@ -341,10 +345,10 @@ function UserShopAdmin({ coin, currentUser }) {
     setSuccess('')
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setError('')
     setSuccess('')
-    const result = submitShopProduct({
+    const result = await submitShopProduct({
       userId: currentUser.id,
       userName: currentUser.name,
       userEmail: currentUser.email,

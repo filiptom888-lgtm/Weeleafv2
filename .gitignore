@@ -4,3 +4,6 @@ dist
 *.local
 .env
 .env.*
+api/config.local.php
+deploy/*.zip
+deploy/check-remote.php

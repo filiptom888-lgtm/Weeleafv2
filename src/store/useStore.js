@@ -2,98 +2,18 @@ import { create } from 'zustand'
 import { COINS as DEFAULT_COINS } from '../data/coinData'
 import { DEFAULT_SHOP_CATEGORIES } from '../data/shopData'
 import { DEFAULT_BLOG_POSTS } from '../data/blogData'
-import {
-  loadUsers,
-  saveUsers,
-  loadUserSession,
-  saveUserSession,
-  clearUserSession,
-  sanitizeUser,
-  ensureTestUser,
-} from '../data/userAuth'
-
-// Persist admin coin edits to localStorage so they survive refresh
-const STORAGE_KEY = 'wl_admin_coins'
-const SHOP_KEY = 'wl_admin_shop'
-const BLOG_KEY = 'wl_admin_blog'
-const DONATION_KEY = 'wl_admin_donation'
-const STATS_KEY = 'wl_admin_stats'
-const PENDING_SHOP_KEY = 'wl_pending_shop'
+import { api, getToken, setToken, loadCachedUser, saveCachedUser } from '../api/wlApi'
 
 const DEFAULT_STATS = [
-  { id: 'members',   label: 'Medlemmer',     value: 0,   suffix: '' },
-  { id: 'co2',       label: 'Kg CO₂ sparet', value: 0,   suffix: 'kg' },
-  { id: 'donations', label: 'Donationer',    value: 0,   suffix: 'kr' },
+  { id: 'members', label: 'Medlemmer', value: 0, suffix: '' },
+  { id: 'co2', label: 'Kg CO₂ sparet', value: 0, suffix: 'kg' },
+  { id: 'donations', label: 'Donationer', value: 0, suffix: 'kr' },
 ]
-function loadStats() {
-  try {
-    const raw = localStorage.getItem(STATS_KEY)
-    if (raw) return JSON.parse(raw)
-  } catch (_) {}
-  return DEFAULT_STATS
-}
-function saveStats(stats) {
-  try { localStorage.setItem(STATS_KEY, JSON.stringify(stats)) } catch (_) {}
-}
 
 const DEFAULT_DONATION_CONFIG = { mobilepay: '', link: '', qrImageUrl: '' }
-function loadDonation() {
-  try {
-    const raw = localStorage.getItem(DONATION_KEY)
-    if (raw) return { ...DEFAULT_DONATION_CONFIG, ...JSON.parse(raw) }
-  } catch (_) {}
-  return DEFAULT_DONATION_CONFIG
-}
-function saveDonation(cfg) {
-  try { localStorage.setItem(DONATION_KEY, JSON.stringify(cfg)) } catch (_) {}
-}
 
-function loadShop() {
-  try {
-    const raw = localStorage.getItem(SHOP_KEY)
-    if (raw) return JSON.parse(raw)
-  } catch (_) {}
-  return DEFAULT_SHOP_CATEGORIES
-}
-function saveShop(cats) {
-  try { localStorage.setItem(SHOP_KEY, JSON.stringify(cats)) } catch (_) {}
-}
-
-function loadBlog() {
-  try {
-    const raw = localStorage.getItem(BLOG_KEY)
-    if (raw) return JSON.parse(raw)
-  } catch (_) {}
-  return DEFAULT_BLOG_POSTS
-}
-function saveBlog(posts) {
-  try { localStorage.setItem(BLOG_KEY, JSON.stringify(posts)) } catch (_) {}
-}
-function loadPendingShop() {
-  try {
-    const raw = localStorage.getItem(PENDING_SHOP_KEY)
-    if (raw) return JSON.parse(raw)
-  } catch (_) {}
-  return []
-}
-function savePendingShop(submissions) {
-  try { localStorage.setItem(PENDING_SHOP_KEY, JSON.stringify(submissions)) } catch (_) {}
-}
-function loadCoins() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) return JSON.parse(raw)
-  } catch (_) {}
-  return DEFAULT_COINS
-}
-function saveCoins(coins) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(coins)) } catch (_) {}
-}
-
-// System coins that must always exist — auto-added like Admin "+ Add Coin"
 export const SYSTEM_COIN_IDS = ['shop', 'member']
 
-// Redistribute angles evenly: angle[i] = (i / total) * 360
 function redistributeAngles(coins) {
   const total = coins.length
   return coins.map((c, i) => ({ ...c, angle: Math.round((i / total) * 360) }))
@@ -112,106 +32,126 @@ const useStore = create((set, get) => ({
   isChatOpen: false,
   isAdminOpen: false,
   leafyPos: { x: 0, y: 0 },
+  apiReady: false,
+  apiError: null,
 
-  // Runtime-editable coin list
-  coins: loadCoins(),
+  coins: DEFAULT_COINS,
+  shopCategories: DEFAULT_SHOP_CATEGORIES,
+  pendingShopSubmissions: [],
+  blogPosts: DEFAULT_BLOG_POSTS,
+  donationConfig: DEFAULT_DONATION_CONFIG,
+  stats: DEFAULT_STATS,
+  githubSettings: { token: '', owner: 'filiptom888-lgtm', repo: 'Weeleafv2', branch: 'main' },
+  currentUser: loadCachedUser(),
 
-  // Shop categories & products
-  shopCategories: loadShop(),
-
-  // Member-submitted shop products awaiting admin approval
-  pendingShopSubmissions: loadPendingShop(),
-
-  // Blog posts (newest first)
-  blogPosts: loadBlog(),
-
-  // Donation config
-  donationConfig: loadDonation(),
-
-  // Stats counters
-  stats: loadStats(),
-
-  // Member auth (client-side demo — no real backend)
-  currentUser: loadUserSession(),
-
-  setActiveCoin: (coin) =>
-    set({ activeCoin: coin, isModalOpen: coin !== null }),
-
-  closeModal: () =>
-    set({ activeCoin: null, isModalOpen: false }),
-
+  setActiveCoin: (coin) => set({ activeCoin: coin, isModalOpen: coin !== null }),
+  closeModal: () => set({ activeCoin: null, isModalOpen: false }),
   toggleChat: () => set((s) => ({ isChatOpen: !s.isChatOpen })),
   toggleAdmin: () => set((s) => ({ isAdminOpen: !s.isAdminOpen })),
-
   setLeafyPos: (pos) => set({ leafyPos: pos }),
 
-  registerUser: ({ name, email, password }) => {
-    const trimmedName = name?.trim()
-    const trimmedEmail = email?.trim().toLowerCase()
-    const trimmedPassword = password?.trim()
-    if (!trimmedName || !trimmedEmail || !trimmedPassword) {
-      return { ok: false, error: 'Udfyld alle felter.' }
+  loadFromApi: async () => {
+    const res = await api.fetchConfig()
+    if (!res.ok) {
+      set({ apiReady: false, apiError: res.error })
+      get().syncSystemCoins()
+      return { ok: false, error: res.error }
     }
-    if (trimmedPassword.length < 4) {
-      return { ok: false, error: 'Adgangskode skal være mindst 4 tegn.' }
+
+    const data = res.data || {}
+    const patch = { apiReady: true, apiError: null }
+
+    if (Array.isArray(data.coins) && data.coins.length > 0) patch.coins = data.coins
+    if (Array.isArray(data.shopCategories)) patch.shopCategories = data.shopCategories
+    if (Array.isArray(data.blogPosts)) patch.blogPosts = data.blogPosts
+    if (data.donationConfig) patch.donationConfig = { ...DEFAULT_DONATION_CONFIG, ...data.donationConfig }
+    if (Array.isArray(data.stats) && data.stats.length > 0) patch.stats = data.stats
+    if (data.github) patch.githubSettings = { ...get().githubSettings, ...data.github }
+
+    set(patch)
+    get().syncSystemCoins()
+
+    if (getToken()) {
+      const me = await api.me()
+      if (me.ok && me.user) {
+        saveCachedUser(me.user)
+        set({ currentUser: me.user })
+        const subs = await api.fetchSubmissions()
+        if (subs.ok && subs.pendingShopSubmissions) {
+          set({ pendingShopSubmissions: subs.pendingShopSubmissions })
+        }
+      } else {
+        setToken('')
+        saveCachedUser(null)
+        set({ currentUser: null })
+      }
     }
-    const users = loadUsers()
-    if (users.some((u) => u.email === trimmedEmail)) {
-      return { ok: false, error: 'Den e-mail er allerede registreret.' }
-    }
-    const user = {
-      id: `user-${Date.now()}`,
-      name: trimmedName,
-      email: trimmedEmail,
-      password: trimmedPassword,
-      createdAt: new Date().toISOString(),
-    }
-    const updated = [...users, user]
-    saveUsers(updated)
-    const session = sanitizeUser(user)
-    saveUserSession(session)
-    set({ currentUser: session })
+
     return { ok: true }
   },
 
-  loginUser: ({ email, password }) => {
-    const trimmedEmail = email?.trim().toLowerCase()
-    const trimmedPassword = password?.trim()
-    if (!trimmedEmail || !trimmedPassword) {
-      return { ok: false, error: 'Udfyld e-mail og adgangskode.' }
+  registerUser: async ({ name, email, password }) => {
+    const res = await api.register(name?.trim(), email?.trim(), password?.trim())
+    if (!res.ok) return res
+    setToken(res.token)
+    saveCachedUser(res.user)
+    set({ currentUser: res.user })
+    const subs = await api.fetchSubmissions()
+    if (subs.ok && subs.pendingShopSubmissions) {
+      set({ pendingShopSubmissions: subs.pendingShopSubmissions })
     }
-    const user = loadUsers().find(
-      (u) => u.email === trimmedEmail && u.password === trimmedPassword
-    )
-    if (!user) {
-      return { ok: false, error: 'Forkert e-mail eller adgangskode.' }
-    }
-    const session = sanitizeUser(user)
-    saveUserSession(session)
-    set({ currentUser: session })
     return { ok: true }
   },
 
-  logoutUser: () => {
-    clearUserSession()
-    set({ currentUser: null })
+  loginUser: async ({ email, password }) => {
+    const res = await api.login(email?.trim(), password?.trim())
+    if (!res.ok) return res
+    setToken(res.token)
+    saveCachedUser(res.user)
+    set({ currentUser: res.user })
+    const subs = await api.fetchSubmissions()
+    if (subs.ok && subs.pendingShopSubmissions) {
+      set({ pendingShopSubmissions: subs.pendingShopSubmissions })
+    }
+    return { ok: true }
   },
 
-  // Admin actions
+  adminLogin: async (password) => {
+    const res = await api.adminLogin(password?.trim())
+    if (!res.ok) return res
+    setToken(res.token)
+    saveCachedUser(res.user)
+    set({ currentUser: res.user })
+    const subs = await api.fetchSubmissions()
+    if (subs.ok && subs.pendingShopSubmissions) {
+      set({ pendingShopSubmissions: subs.pendingShopSubmissions })
+    }
+    return { ok: true }
+  },
+
+  logoutUser: async () => {
+    await api.logout()
+    setToken('')
+    saveCachedUser(null)
+    set({ currentUser: null, pendingShopSubmissions: [] })
+  },
+
+  persistCoins: async () => {
+    const { coins } = get()
+    return api.saveCoins(coins)
+  },
+
   addCoin: (coin) => {
     const updated = redistributeAngles([...get().coins, coin])
-    saveCoins(updated)
     set({ coins: updated })
-    // Return the redistributed version of the new coin so the caller can edit it
+    api.saveCoins(updated)
     return updated[updated.length - 1]
   },
 
-  /** Same as Admin "+ Add Coin" — ensures shop + member login nodes exist on the orbit */
   syncSystemCoins: () => {
     const { coins, addCoin, updateCoin } = get()
     const hiveImage = coins.find((c) => c.id === 'wl-hive')?.imageUrl
 
-    // Retire old events node id → member login
     const eventsCoin = coins.find((c) => c.id === 'wl-events')
     if (eventsCoin && !coins.some((c) => c.id === 'member')) {
       const memberDef = memberCoinFromDefaults(coins)
@@ -231,7 +171,6 @@ const useStore = create((set, get) => ({
       }
     }
 
-    // Keep member coin image in sync with WL Hive
     const member = get().coins.find((c) => c.id === 'member')
     const hive = get().coins.find((c) => c.id === 'wl-hive')
     if (member && hive?.imageUrl && member.imageUrl !== hive.imageUrl) {
@@ -241,77 +180,83 @@ const useStore = create((set, get) => ({
 
   updateCoin: (id, patch) => {
     const updated = get().coins.map((c) => (c.id === id ? { ...c, ...patch } : c))
-    saveCoins(updated)
     set({ coins: updated })
-    // Sync activeCoin if it was the one edited
     if (get().activeCoin?.id === id) {
       set({ activeCoin: updated.find((c) => c.id === id) })
     }
-  },
-  deleteCoin: (id) => {
-    const updated = redistributeAngles(get().coins.filter((c) => c.id !== id))
-    saveCoins(updated)
-    set({ coins: updated, activeCoin: null, isModalOpen: false })
-  },
-  resetCoins: () => {
-    saveCoins(DEFAULT_COINS)
-    set({ coins: DEFAULT_COINS, activeCoin: null, isModalOpen: false })
+    api.saveCoins(updated)
   },
 
-  // Shop actions
+  deleteCoin: (id) => {
+    const updated = redistributeAngles(get().coins.filter((c) => c.id !== id))
+    set({ coins: updated, activeCoin: null, isModalOpen: false })
+    api.saveCoins(updated)
+  },
+
+  resetCoins: async () => {
+    set({ coins: DEFAULT_COINS, activeCoin: null, isModalOpen: false })
+    return api.saveCoins(DEFAULT_COINS)
+  },
+
+  persistShop: async () => api.saveShop(get().shopCategories),
+
   addShopCategory: (cat) => {
     const updated = [...get().shopCategories, cat]
-    saveShop(updated)
     set({ shopCategories: updated })
+    api.saveShop(updated)
   },
+
   updateShopCategory: (id, patch) => {
-    const updated = get().shopCategories.map((c) => c.id === id ? { ...c, ...patch } : c)
-    saveShop(updated)
+    const updated = get().shopCategories.map((c) => (c.id === id ? { ...c, ...patch } : c))
     set({ shopCategories: updated })
+    api.saveShop(updated)
   },
+
   deleteShopCategory: (id) => {
     const updated = get().shopCategories.filter((c) => c.id !== id)
-    saveShop(updated)
     set({ shopCategories: updated })
+    api.saveShop(updated)
   },
+
   addShopProduct: (categoryId, product) => {
     const updated = get().shopCategories.map((c) =>
       c.id === categoryId ? { ...c, products: [...(c.products ?? []), product] } : c
     )
-    saveShop(updated)
     set({ shopCategories: updated })
+    api.saveShop(updated)
   },
+
   updateShopProduct: (categoryId, productId, patch) => {
     const updated = get().shopCategories.map((c) =>
       c.id === categoryId
-        ? { ...c, products: (c.products ?? []).map((p) => p.id === productId ? { ...p, ...patch } : p) }
+        ? { ...c, products: (c.products ?? []).map((p) => (p.id === productId ? { ...p, ...patch } : p)) }
         : c
     )
-    saveShop(updated)
     set({ shopCategories: updated })
+    api.saveShop(updated)
   },
+
   deleteShopProduct: (categoryId, productId) => {
     const updated = get().shopCategories.map((c) =>
       c.id === categoryId
         ? { ...c, products: (c.products ?? []).filter((p) => p.id !== productId) }
         : c
     )
-    saveShop(updated)
     set({ shopCategories: updated })
-  },
-  resetShop: () => {
-    saveShop(DEFAULT_SHOP_CATEGORIES)
-    set({ shopCategories: DEFAULT_SHOP_CATEGORIES })
+    api.saveShop(updated)
   },
 
-  submitShopProduct: ({ userId, userName, userEmail, categoryId, product }) => {
+  resetShop: async () => {
+    set({ shopCategories: DEFAULT_SHOP_CATEGORIES })
+    return api.saveShop(DEFAULT_SHOP_CATEGORIES)
+  },
+
+  submitShopProduct: async ({ userId, userName, userEmail, categoryId, product }) => {
     const category = get().shopCategories.find((c) => c.id === categoryId)
     if (!category) return { ok: false, error: 'Vælg en gyldig kategori.' }
     if (!product?.name?.trim()) return { ok: false, error: 'Produktnavn er påkrævet.' }
-    const submission = {
-      id: `sub-${Date.now()}`,
-      status: 'pending',
-      submittedAt: new Date().toISOString(),
+
+    const res = await api.submitProduct({
       userId,
       userName,
       userEmail,
@@ -327,119 +272,116 @@ const useStore = create((set, get) => ({
         imageUrl: product.imageUrl || '',
         link: product.link?.trim() || '',
       },
+    })
+
+    if (!res.ok) return res
+    if (res.submission) {
+      set({ pendingShopSubmissions: [res.submission, ...get().pendingShopSubmissions] })
+    } else {
+      await get().loadFromApi()
     }
-    const updated = [submission, ...get().pendingShopSubmissions]
-    savePendingShop(updated)
-    set({ pendingShopSubmissions: updated })
-    return { ok: true, submission }
+    return { ok: true, submission: res.submission }
   },
 
-  approveShopSubmission: (submissionId) => {
-    const sub = get().pendingShopSubmissions.find((s) => s.id === submissionId)
-    if (!sub || sub.status !== 'pending') return
-    get().addShopProduct(sub.categoryId, { ...sub.product })
-    const updated = get().pendingShopSubmissions.map((s) =>
-      s.id === submissionId
-        ? { ...s, status: 'approved', reviewedAt: new Date().toISOString() }
-        : s
-    )
-    savePendingShop(updated)
-    set({ pendingShopSubmissions: updated })
+  approveShopSubmission: async (submissionId) => {
+    const res = await api.approveSubmission(submissionId)
+    if (!res.ok) return res
+    set({
+      shopCategories: res.shopCategories ?? get().shopCategories,
+      pendingShopSubmissions: res.pendingShopSubmissions ?? get().pendingShopSubmissions,
+    })
+    return { ok: true }
   },
 
-  rejectShopSubmission: (submissionId) => {
-    const updated = get().pendingShopSubmissions.map((s) =>
-      s.id === submissionId
-        ? { ...s, status: 'rejected', reviewedAt: new Date().toISOString() }
-        : s
-    )
-    savePendingShop(updated)
-    set({ pendingShopSubmissions: updated })
+  rejectShopSubmission: async (submissionId) => {
+    const res = await api.rejectSubmission(submissionId)
+    if (!res.ok) return res
+    if (res.pendingShopSubmissions) set({ pendingShopSubmissions: res.pendingShopSubmissions })
+    return { ok: true }
   },
 
-  deleteShopSubmission: (submissionId) => {
-    const updated = get().pendingShopSubmissions.filter((s) => s.id !== submissionId)
-    savePendingShop(updated)
-    set({ pendingShopSubmissions: updated })
+  deleteShopSubmission: async (submissionId) => {
+    const res = await api.deleteSubmission(submissionId)
+    if (!res.ok) return res
+    if (res.pendingShopSubmissions) set({ pendingShopSubmissions: res.pendingShopSubmissions })
+    return { ok: true }
   },
 
-  // Blog actions
-  addBlogPost: (post) => {
-    const updated = [post, ...get().blogPosts]
-    saveBlog(updated)
+  addBlogPost: async (post) => {
+    const res = await api.createPost(post)
+    if (!res.ok) return res
+    await get().loadFromApi()
+    return { ok: true }
+  },
+
+  updateBlogPost: async (id, patch) => {
+    const res = await api.updatePost(id, patch)
+    if (!res.ok) return res
+    const updated = get().blogPosts.map((p) => (p.id === id ? { ...p, ...patch } : p))
     set({ blogPosts: updated })
+    return { ok: true }
   },
-  updateBlogPost: (id, patch) => {
-    const updated = get().blogPosts.map((p) => p.id === id ? { ...p, ...patch } : p)
-    saveBlog(updated)
-    set({ blogPosts: updated })
+
+  deleteBlogPost: async (id) => {
+    const res = await api.deletePost(id)
+    if (!res.ok) return res
+    set({ blogPosts: get().blogPosts.filter((p) => p.id !== id) })
+    return { ok: true }
   },
-  deleteBlogPost: (id) => {
-    const updated = get().blogPosts.filter((p) => p.id !== id)
-    saveBlog(updated)
-    set({ blogPosts: updated })
-  },
-  resetBlog: () => {
-    saveBlog(DEFAULT_BLOG_POSTS)
+
+  resetBlog: async () => {
+    for (const post of get().blogPosts) {
+      await api.deletePost(post.id)
+    }
+    for (const post of DEFAULT_BLOG_POSTS) {
+      await api.createPost(post)
+    }
     set({ blogPosts: DEFAULT_BLOG_POSTS })
+    return { ok: true }
   },
 
-  // Donation actions
   setDonationConfig: (patch) => {
     const updated = { ...get().donationConfig, ...patch }
-    saveDonation(updated)
     set({ donationConfig: updated })
+    api.saveDonation(updated)
   },
-  resetDonationConfig: () => {
-    saveDonation(DEFAULT_DONATION_CONFIG)
+
+  resetDonationConfig: async () => {
     set({ donationConfig: DEFAULT_DONATION_CONFIG })
+    return api.saveDonation(DEFAULT_DONATION_CONFIG)
   },
 
-  // Stats actions
   updateStats: (patch) => {
-    // patch can be array (full replace) or object {id, ...fields}
-    if (Array.isArray(patch)) {
-      saveStats(patch)
-      set({ stats: patch })
-    } else {
-      const updated = get().stats.map((s) => s.id === patch.id ? { ...s, ...patch } : s)
-      saveStats(updated)
-      set({ stats: updated })
-    }
-  },
-  resetStats: () => {
-    saveStats(DEFAULT_STATS)
-    set({ stats: DEFAULT_STATS })
+    const updated = Array.isArray(patch)
+      ? patch
+      : get().stats.map((s) => (s.id === patch.id ? { ...s, ...patch } : s))
+    set({ stats: updated })
+    api.saveStats(updated)
   },
 
-  // Apply a full config snapshot fetched from /wl-config.json
-  // This is the "source of truth" for all users — overrides localStorage
+  resetStats: async () => {
+    set({ stats: DEFAULT_STATS })
+    return api.saveStats(DEFAULT_STATS)
+  },
+
+  setGithubSettings: (patch) => {
+    const updated = { ...get().githubSettings, ...patch }
+    set({ githubSettings: updated })
+    api.saveGithub(updated)
+  },
+
   applyRemoteConfig: (data) => {
-    if (data.coins && Array.isArray(data.coins) && data.coins.length > 0) {
-      saveCoins(data.coins)
-      set({ coins: data.coins })
-    }
-    if (data.shopCategories && Array.isArray(data.shopCategories)) {
-      saveShop(data.shopCategories)
-      set({ shopCategories: data.shopCategories })
-    }
-    if (data.blogPosts && Array.isArray(data.blogPosts)) {
-      saveBlog(data.blogPosts)
-      set({ blogPosts: data.blogPosts })
-    }
-    if (data.donationConfig && typeof data.donationConfig === 'object') {
-      saveDonation(data.donationConfig)
-      set({ donationConfig: data.donationConfig })
-    }
-    if (data.stats && Array.isArray(data.stats) && data.stats.length > 0) {
-      saveStats(data.stats)
-      set({ stats: data.stats })
-    }
+    const patch = {}
+    if (data.coins?.length) patch.coins = data.coins
+    if (data.shopCategories) patch.shopCategories = data.shopCategories
+    if (data.blogPosts) patch.blogPosts = data.blogPosts
+    if (data.donationConfig) patch.donationConfig = data.donationConfig
+    if (data.stats?.length) patch.stats = data.stats
+    if (Object.keys(patch).length) set(patch)
     get().syncSystemCoins()
   },
 }))
 
 useStore.getState().syncSystemCoins()
-ensureTestUser()
 
 export default useStore

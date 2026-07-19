@@ -78,6 +78,7 @@ export default function VantaBackground({
   style = {},
   options = {},
   enabled = true,
+  visible = true,
 }) {
   const elRef = useRef(null)
   const vantaRef = useRef(null)
@@ -128,7 +129,15 @@ export default function VantaBackground({
     <div
       ref={elRef}
       className={className}
-      style={{ position: 'absolute', inset: 0, zIndex: 1, ...style }}
+      style={{
+        position: 'absolute',
+        inset: 0,
+        zIndex: 1,
+        opacity: visible ? 1 : 0,
+        visibility: visible ? 'visible' : 'hidden',
+        transition: 'opacity 0.45s ease-out, visibility 0.45s ease-out',
+        ...style,
+      }}
       aria-hidden
     />
   )

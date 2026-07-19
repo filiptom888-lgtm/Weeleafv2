@@ -3,6 +3,7 @@ import { COINS as DEFAULT_COINS } from '../data/coinData'
 import { DEFAULT_SHOP_CATEGORIES } from '../data/shopData'
 import { DEFAULT_BLOG_POSTS } from '../data/blogData'
 import { api, getToken, setToken, loadCachedUser, saveCachedUser } from '../api/wlApi'
+import { preloadCoinImages } from '../utils/textureCache'
 
 const DEFAULT_STATS = [
   { id: 'members', label: 'Medlemmer', value: 0, suffix: '' },
@@ -29,6 +30,8 @@ function memberCoinFromDefaults(coins) {
 const useStore = create((set, get) => ({
   activeCoin: null,
   isModalOpen: false,
+  /** 'visible' | 'hidden' — drives scene fade without unmounting WebGL */
+  sceneRevealPhase: 'visible',
   isChatOpen: false,
   isAdminOpen: false,
   leafyPos: { x: 0, y: 0 },
@@ -44,8 +47,14 @@ const useStore = create((set, get) => ({
   githubSettings: { token: '', owner: 'filiptom888-lgtm', repo: 'Weeleafv2', branch: 'main' },
   currentUser: loadCachedUser(),
 
-  setActiveCoin: (coin) => set({ activeCoin: coin, isModalOpen: coin !== null }),
-  closeModal: () => set({ activeCoin: null, isModalOpen: false }),
+  setActiveCoin: (coin) =>
+    set({
+      activeCoin: coin,
+      isModalOpen: coin !== null,
+      sceneRevealPhase: coin ? 'hidden' : 'visible',
+    }),
+  revealScene: () => set({ sceneRevealPhase: 'visible' }),
+  closeModal: () => set({ activeCoin: null, isModalOpen: false, sceneRevealPhase: 'visible' }),
   toggleChat: () => set((s) => ({ isChatOpen: !s.isChatOpen })),
   toggleAdmin: () => set((s) => ({ isAdminOpen: !s.isAdminOpen })),
   accountOpenTab: 'member',
@@ -72,6 +81,7 @@ const useStore = create((set, get) => ({
 
     set(patch)
     get().syncSystemCoins()
+    preloadCoinImages(get().coins)
 
     if (getToken()) {
       const me = await api.me()
@@ -198,6 +208,7 @@ const useStore = create((set, get) => ({
   updateCoin: (id, patch) => {
     const updated = get().coins.map((c) => (c.id === id ? { ...c, ...patch } : c))
     set({ coins: updated })
+    if (patch.imageUrl) preloadTexture(patch.imageUrl)
     if (get().activeCoin?.id === id) {
       set({ activeCoin: updated.find((c) => c.id === id) })
     }
@@ -396,6 +407,7 @@ const useStore = create((set, get) => ({
     if (data.stats?.length) patch.stats = data.stats
     if (Object.keys(patch).length) set(patch)
     get().syncSystemCoins()
+    preloadCoinImages(get().coins)
   },
 }))
 

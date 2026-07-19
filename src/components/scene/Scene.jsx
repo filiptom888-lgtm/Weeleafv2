@@ -470,6 +470,8 @@ function SceneContents() {
 }
 
 export default function Scene() {
+  const isModalOpen = useStore((s) => s.isModalOpen)
+
   useEffect(() => {
     const isModalOpen = () => useStore.getState().isModalOpen
 
@@ -516,6 +518,7 @@ export default function Scene() {
 
   return (
     <Canvas
+      frameloop={isModalOpen ? 'never' : 'always'}
       camera={{ position: [0, 1.5, 15], fov: 50, near: 0.1, far: 100 }}
       shadows
       style={{ position: 'absolute', inset: 0 }}

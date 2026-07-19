@@ -5,6 +5,7 @@ import * as THREE from 'three'
 import { gsap } from 'gsap'
 
 import useStore from '../../store/useStore'
+import { getCachedTexture, preloadTexture } from '../../utils/textureCache'
 import { orbitState } from '../../data/orbitState'
 import { ORBIT_RADIUS, ORBIT_HEIGHT } from '../../data/coinData'
 
@@ -151,7 +152,7 @@ export default function Coin3D({ coin }) {
             <meshBasicMaterial color="#000000" transparent opacity={0} side={THREE.DoubleSide} />
           </mesh>
         )}
-        {coin.imageUrl && <CoinImage url={coin.imageUrl} radius={COIN_RADIUS} />}
+        {coin.imageUrl && <CoinImage url={coin.imageUrl} radius={COIN_RADIUS} fallbackColor={coin.color} />}
 
         {/* Main label — only shown when no image */}
         {!coin.imageUrl && (
@@ -202,24 +203,34 @@ export default function Coin3D({ coin }) {
 }
 
 /* ─── Optional image overlay on coin face ───────────────────────────── */
-function CoinImage({ url, radius }) {
-  const meshRef = useRef()
-  const [texture, setTexture] = useState(null)
+function CoinImage({ url, radius, fallbackColor = '#4ade80' }) {
+  const [texture, setTexture] = useState(() => getCachedTexture(url))
 
   useEffect(() => {
-    const loader = new THREE.TextureLoader()
-    loader.load(url, (t) => {
-      t.colorSpace = THREE.SRGBColorSpace
-      setTexture(t)
+    const cached = getCachedTexture(url)
+    if (cached) {
+      setTexture(cached)
+      return undefined
+    }
+    let cancelled = false
+    preloadTexture(url).then((t) => {
+      if (!cancelled && t) setTexture(t)
     })
+    return () => {
+      cancelled = true
+    }
   }, [url])
-
-  if (!texture) return null
 
   return (
     <mesh position={[0, 0, 0.005]}>
       <circleGeometry args={[radius * 0.88, 48]} />
-      <meshBasicMaterial map={texture} transparent side={THREE.DoubleSide} />
+      <meshBasicMaterial
+        map={texture || undefined}
+        color={texture ? '#ffffff' : fallbackColor}
+        transparent
+        opacity={texture ? 1 : 0.85}
+        side={THREE.DoubleSide}
+      />
     </mesh>
   )
 }

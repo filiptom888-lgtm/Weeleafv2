@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { gsap } from 'gsap'
 import VantaBackground from './VantaBackground'
+import useStore from '../../store/useStore'
 import { WL } from '../../styles/modalTheme'
 
 /**
@@ -20,6 +21,7 @@ export default function FullscreenShell({
 }) {
   const uiRef = useRef()
   const [vantaReady, setVantaReady] = useState(false)
+  const revealScene = useStore((s) => s.revealScene)
 
   useEffect(() => {
     const t = window.setTimeout(() => setVantaReady(true), 80)
@@ -40,6 +42,7 @@ export default function FullscreenShell({
   }, [])
 
   const handleClose = () => {
+    revealScene()
     if (!uiRef.current) {
       onClose()
       return
@@ -47,7 +50,7 @@ export default function FullscreenShell({
     gsap.to(uiRef.current, {
       opacity: 0,
       y: 6,
-      duration: 0.16,
+      duration: 0.22,
       ease: 'power2.in',
       onComplete: onClose,
     })

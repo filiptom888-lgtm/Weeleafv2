@@ -1,12 +1,14 @@
-import React, { Suspense, useEffect, useRef, useState } from 'react'
+import React, { Suspense, useEffect } from 'react'
 import useStore from './store/useStore'
 import Scene from './components/scene/Scene'
 import Modal from './components/ui/Modal'
 import MainSceneBackground from './components/ui/MainSceneBackground'
+import SceneTransition from './components/ui/SceneTransition'
 import LeafyAssistant from './components/ui/LeafyAssistant'
 import ChatBot from './components/ui/ChatBot'
 import ScrollHint from './components/ui/ScrollHint'
 import HUD from './components/ui/HUD'
+import { preloadCoinImages } from './utils/textureCache'
 
 function LoadingScreen() {
   return (
@@ -49,42 +51,43 @@ function LoadingScreen() {
 
 export default function App() {
   const isModalOpen = useStore((s) => s.isModalOpen)
-  const [sceneBgKey, setSceneBgKey] = useState(0)
-  const wasModalOpen = useRef(false)
+  const sceneRevealPhase = useStore((s) => s.sceneRevealPhase)
+  const sceneVisible = sceneRevealPhase === 'visible'
 
   useEffect(() => {
     useStore.getState().syncSystemCoins()
+    preloadCoinImages(useStore.getState().coins)
     useStore.getState().loadFromApi().then((res) => {
+      preloadCoinImages(useStore.getState().coins)
       if (!res?.ok) {
         fetch('/wl-config.json?v=' + Date.now())
           .then((r) => (r.ok ? r.json() : null))
           .then((data) => {
-            if (data && Object.keys(data).length > 0) useStore.getState().applyRemoteConfig(data)
-            else useStore.getState().syncSystemCoins()
+            if (data && Object.keys(data).length > 0) {
+              useStore.getState().applyRemoteConfig(data)
+              preloadCoinImages(useStore.getState().coins)
+            } else useStore.getState().syncSystemCoins()
           })
           .catch(() => {})
       }
     })
   }, [])
 
-  // Remount main Vanta after modal closes; hide 3D scene while modal clouds use WebGL
-  useEffect(() => {
-    if (wasModalOpen.current && !isModalOpen) {
-      setSceneBgKey((k) => k + 1)
-    }
-    wasModalOpen.current = isModalOpen
-  }, [isModalOpen])
-
   return (
     <div className="relative w-screen h-screen overflow-hidden select-none">
-      {!isModalOpen && <MainSceneBackground key={`scene-bg-${sceneBgKey}`} />}
+      <MainSceneBackground visible={sceneVisible} />
 
-      <div className="relative z-10 w-full h-full">
-        {!isModalOpen && (
-          <Suspense fallback={<LoadingScreen />}>
-            <Scene />
-          </Suspense>
-        )}
+      <div
+        className="relative z-10 w-full h-full"
+        style={{
+          opacity: sceneVisible ? 1 : 0,
+          pointerEvents: isModalOpen ? 'none' : 'auto',
+          transition: 'opacity 0.45s ease-out',
+        }}
+      >
+        <Suspense fallback={<LoadingScreen />}>
+          <Scene />
+        </Suspense>
 
         <HUD />
         <Modal />
@@ -92,6 +95,8 @@ export default function App() {
         <ChatBot />
         <ScrollHint />
       </div>
+
+      <SceneTransition />
     </div>
   )
 }

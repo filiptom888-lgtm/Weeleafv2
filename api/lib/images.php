@@ -232,12 +232,56 @@ function wl_externalize_coin_images(array $coins): array
     return ['coins' => $coins, 'changed' => $changed];
 }
 
+/** Re-link coin imageUrl from files already on disk (e.g. after DB lost paths). */
+function wl_repair_coin_image_urls(): array
+{
+    $coins = wl_get_config_key('coins', []);
+    if (!is_array($coins) || $coins === []) {
+        return ['coins' => [], 'repaired' => 0];
+    }
+
+    $dir = wl_uploads_coins_dir();
+    $repaired = 0;
+
+    foreach ($coins as &$coin) {
+        $id = (string) ($coin['id'] ?? '');
+        if ($id === '') {
+            continue;
+        }
+        $safeId = wl_sanitize_asset_id($id);
+        $foundUrl = null;
+        foreach (['webp', 'png', 'jpg', 'jpeg', 'gif'] as $ext) {
+            if (is_file($dir . '/' . $safeId . '.' . $ext)) {
+                $foundUrl = wl_media_public_path('coins', $id, $ext);
+                break;
+            }
+        }
+        if ($foundUrl === null) {
+            continue;
+        }
+        $current = (string) ($coin['imageUrl'] ?? '');
+        if ($current !== $foundUrl) {
+            $coin['imageUrl'] = $foundUrl;
+            $repaired++;
+        }
+    }
+    unset($coin);
+
+    if ($repaired > 0) {
+        wl_set_config_key('coins', $coins);
+    }
+
+    return ['coins' => $coins, 'repaired' => $repaired];
+}
+
 function wl_get_coins_for_api(): array
 {
     $coins = wl_get_config_key('coins', []);
     if (!is_array($coins)) {
         return [];
     }
+    $repair = wl_repair_coin_image_urls();
+    $coins = $repair['coins'] ?: $coins;
     $result = wl_externalize_coin_images($coins);
     if ($result['changed']) {
         wl_set_config_key('coins', $result['coins']);

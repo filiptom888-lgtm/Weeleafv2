@@ -212,7 +212,7 @@ const useStore = create((set, get) => ({
   addCoin: (coin) => {
     const updated = redistributeAngles([...get().coins, coin])
     set({ coins: updated })
-    api.saveCoins(updated)
+    if (get().apiReady) api.saveCoins(updated)
     return updated[updated.length - 1]
   },
 
@@ -253,13 +253,13 @@ const useStore = create((set, get) => ({
     if (get().activeCoin?.id === id) {
       set({ activeCoin: updated.find((c) => c.id === id) })
     }
-    api.saveCoins(updated)
+    if (get().apiReady) api.saveCoins(updated)
   },
 
   deleteCoin: (id) => {
     const updated = redistributeAngles(get().coins.filter((c) => c.id !== id))
     set({ coins: updated, activeCoin: null, isModalOpen: false })
-    api.saveCoins(updated)
+    if (get().apiReady) api.saveCoins(updated)
   },
 
   resetCoins: async () => {

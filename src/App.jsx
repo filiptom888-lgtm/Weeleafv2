@@ -41,10 +41,7 @@ export default function App() {
   const sceneVisible = sceneRevealPhase === 'visible'
 
   useEffect(() => {
-    const store = useStore.getState()
-    store.syncSystemCoins()
-
-    store.loadFromApi().then(() => {
+    useStore.getState().loadFromApi().then(() => {
       deferNonCritical(() => preloadCoinImages(useStore.getState().coins))
     })
   }, [])

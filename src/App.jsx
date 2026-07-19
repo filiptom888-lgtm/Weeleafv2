@@ -1,4 +1,4 @@
-import React, { Suspense, useEffect } from 'react'
+import React, { Suspense, useEffect, useState } from 'react'
 import useStore from './store/useStore'
 import Scene from './components/scene/Scene'
 import Modal from './components/ui/Modal'
@@ -17,7 +17,6 @@ function LoadingScreen() {
       style={{ background: 'linear-gradient(135deg, #050f08 0%, #0a1f10 50%, #061209 100%)' }}
     >
       <div className="text-center space-y-5">
-        {/* Spinning ring */}
         <div className="relative w-20 h-20 mx-auto">
           <div
             className="absolute inset-0 rounded-full border-2 animate-spin"
@@ -32,7 +31,6 @@ function LoadingScreen() {
               animationDuration: '0.8s',
             }}
           />
-          {/* WL centre */}
           <div className="absolute inset-0 flex items-center justify-center">
             <span className="text-green-400 font-bold text-xs tracking-widest">WL</span>
           </div>
@@ -49,54 +47,77 @@ function LoadingScreen() {
   )
 }
 
+async function bootApp() {
+  const store = useStore.getState()
+  store.syncSystemCoins()
+  await preloadCoinImages(store.coins)
+
+  const res = await store.loadFromApi()
+  await preloadCoinImages(useStore.getState().coins)
+
+  if (!res?.ok) {
+    try {
+      const r = await fetch('/wl-config.json?v=' + Date.now())
+      if (r.ok) {
+        const data = await r.json()
+        if (data && Object.keys(data).length > 0) {
+          useStore.getState().applyRemoteConfig(data)
+          await preloadCoinImages(useStore.getState().coins)
+        } else {
+          useStore.getState().syncSystemCoins()
+        }
+      }
+    } catch {
+      /* offline fallback */
+    }
+  }
+}
+
 export default function App() {
   const isModalOpen = useStore((s) => s.isModalOpen)
   const sceneRevealPhase = useStore((s) => s.sceneRevealPhase)
   const sceneVisible = sceneRevealPhase === 'visible'
+  const [appReady, setAppReady] = useState(false)
 
   useEffect(() => {
-    useStore.getState().syncSystemCoins()
-    preloadCoinImages(useStore.getState().coins)
-    useStore.getState().loadFromApi().then((res) => {
-      preloadCoinImages(useStore.getState().coins)
-      if (!res?.ok) {
-        fetch('/wl-config.json?v=' + Date.now())
-          .then((r) => (r.ok ? r.json() : null))
-          .then((data) => {
-            if (data && Object.keys(data).length > 0) {
-              useStore.getState().applyRemoteConfig(data)
-              preloadCoinImages(useStore.getState().coins)
-            } else useStore.getState().syncSystemCoins()
-          })
-          .catch(() => {})
-      }
+    let cancelled = false
+    bootApp().finally(() => {
+      if (!cancelled) setAppReady(true)
     })
+    return () => {
+      cancelled = true
+    }
   }, [])
+
+  if (!appReady) return <LoadingScreen />
 
   return (
     <div className="relative w-screen h-screen overflow-hidden select-none">
       <MainSceneBackground visible={sceneVisible} />
 
+      {/* 3D scene + HUD — fades while modals are open */}
       <div
-        className="relative z-10 w-full h-full"
+        className="absolute inset-0 z-10"
         style={{
           opacity: sceneVisible ? 1 : 0,
           pointerEvents: isModalOpen ? 'none' : 'auto',
-          transition: 'opacity 0.45s ease-out',
+          transition: 'opacity 0.4s ease-out',
         }}
       >
-        <Suspense fallback={<LoadingScreen />}>
+        <Suspense fallback={null}>
           <Scene />
         </Suspense>
-
         <HUD />
-        <Modal />
-        <LeafyAssistant />
-        <ChatBot />
         <ScrollHint />
       </div>
 
       <SceneTransition />
+
+      {/* Modals always full opacity — never inside the fading scene layer */}
+      <Modal />
+
+      <LeafyAssistant />
+      <ChatBot />
     </div>
   )
 }

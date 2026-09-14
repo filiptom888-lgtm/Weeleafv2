@@ -61,14 +61,14 @@ function StatsBar({ visible }) {
           )}
           <div className="flex flex-col items-center">
             <span
-              className="text-sm font-bold tabular-nums leading-none"
+              className="wl-display text-lg tabular-nums leading-none"
               style={{ color: '#f0c070' }}
             >
               <AnimatedNumber target={stat.value} suffix={stat.suffix} />
             </span>
             <span
-              className="text-[9px] tracking-widest uppercase mt-0.5 leading-none opacity-60"
-              style={{ color: '#e8b060' }}
+              className="wl-eyebrow mt-1 opacity-80"
+              style={{ color: '#e8b060', fontSize: '8px' }}
             >
               {stat.label}
             </span>

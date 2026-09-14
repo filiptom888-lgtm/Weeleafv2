@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react'
 import useStore from '../../store/useStore'
 import FullscreenShell from './FullscreenShell'
 import AccountTabBar from './AccountTabBar'
-import { WL, accountCardStyle } from '../../styles/modalTheme'
+import { WL, airGlassStyle, airTileStyle, primaryBtnStyle, modalPad } from '../../styles/modalTheme'
+import { stripLeadingEmoji } from '../../utils/text'
 
 export default function ShopModal({ coin, onClose }) {
   const { shopCategories } = useStore()
@@ -25,35 +26,56 @@ export default function ShopModal({ coin, onClose }) {
   }))
 
   return (
-    <FullscreenShell
-      onClose={onClose}
-      contentClassName="max-w-3xl"
-    >
-      <div className="rounded-2xl overflow-hidden" style={accountCardStyle}>
+    <FullscreenShell onClose={onClose} contentClassName="max-w-5xl" headerLayout="none">
+      <div className="w-full rounded-[1.85rem] overflow-hidden wl-paper" style={airGlassStyle}>
         {shopCategories.length > 0 && (
-          <div className="p-4 pb-0 border-b" style={{ borderColor: WL.borderLight }}>
-            <h2 className="text-lg md:text-xl font-bold mb-3" style={{ color: WL.text }}>
-              {coin.content?.title || 'WL Shop'}
-            </h2>
-            <AccountTabBar
-              tabs={categoryTabs}
-              active={activeCatId}
-              onChange={setActiveCatId}
+          <div
+            className={`${modalPad} pt-7 pb-5 md:pt-8 md:pb-6`}
+            style={{
+              background: 'rgba(255, 248, 238, 0.16)',
+              borderBottom: `1px solid ${WL.borderLight}`,
+            }}
+          >
+            <div
+              className="h-1 w-16 rounded-full mb-4"
+              style={{ background: `linear-gradient(90deg, ${WL.green}, ${WL.gold})` }}
             />
-            <p className="text-[10px] mt-2 mb-1 px-1" style={{ color: WL.textSoft }}>
+            <p className="wl-eyebrow mb-3">WeeLeaf</p>
+            <h1
+              className="wl-display text-[2rem] md:text-[2.75rem] leading-[1.12]"
+              style={{ color: WL.textOnModal }}
+            >
+              {coin.content?.title || 'WL Shop'}
+            </h1>
+            {coin.content?.tagline && (
+              <p
+                className="wl-tagline text-base md:text-xl mt-3 leading-relaxed max-w-2xl"
+                style={{ color: WL.textMutedOnModal }}
+              >
+                {coin.content.tagline}
+              </p>
+            )}
+            <div className="mt-5">
+              <AccountTabBar
+                tabs={categoryTabs}
+                active={activeCatId}
+                onChange={setActiveCatId}
+              />
+            </div>
+            <p className="text-xs mt-3" style={{ color: WL.textSoftOnModal }}>
               {products.length} {products.length === 1 ? 'vare' : 'varer'} i {activeCategory?.label}
             </p>
           </div>
         )}
 
-        <div className="p-4 md:p-5 space-y-4">
+        <div className={`${modalPad} py-6 md:py-8 space-y-5`}>
           {products.length > 0 && activeProduct ? (
-            <>
+            <div className="grid md:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)] gap-5 md:gap-7 items-start">
               <div
-                className="relative rounded-2xl overflow-hidden"
-                style={{ background: 'rgba(255,255,255,0.55)', border: `1px solid ${WL.borderLight}` }}
+                className="relative rounded-3xl overflow-hidden"
+                style={airTileStyle}
               >
-                <div className="relative flex items-center justify-center min-h-[200px] md:min-h-[260px] p-4">
+                <div className="relative flex items-center justify-center min-h-[260px] md:min-h-[380px] p-5 md:p-7">
                   {products.length > 1 && (
                     <>
                       <button
@@ -61,8 +83,8 @@ export default function ShopModal({ coin, onClose }) {
                         onClick={prev}
                         className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center text-lg z-10 transition-all hover:scale-105"
                         style={{
-                          color: WL.textMuted,
-                          background: 'rgba(255,255,255,0.92)',
+                          color: WL.text,
+                          background: 'rgba(255, 251, 244, 0.95)',
                           border: `1px solid ${WL.border}`,
                         }}
                         aria-label="Forrige produkt"
@@ -74,8 +96,8 @@ export default function ShopModal({ coin, onClose }) {
                         onClick={next}
                         className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full flex items-center justify-center text-lg z-10 transition-all hover:scale-105"
                         style={{
-                          color: WL.textMuted,
-                          background: 'rgba(255,255,255,0.92)',
+                          color: WL.text,
+                          background: 'rgba(255, 251, 244, 0.95)',
                           border: `1px solid ${WL.border}`,
                         }}
                         aria-label="Næste produkt"
@@ -89,11 +111,10 @@ export default function ShopModal({ coin, onClose }) {
                     <img
                       src={activeProduct.imageUrl}
                       alt={activeProduct.name}
-                      className="max-h-[220px] md:max-h-[280px] w-auto max-w-full object-contain rounded-xl"
+                      className="max-h-[280px] md:max-h-[420px] w-auto max-w-full object-contain rounded-xl"
                     />
                   ) : (
-                    <div className="flex flex-col items-center justify-center gap-2 py-12">
-                      <span className="text-5xl opacity-40">🛍️</span>
+                    <div className="flex flex-col items-center justify-center gap-2 py-16">
                       <span className="text-sm" style={{ color: WL.textSoft }}>Intet billede</span>
                     </div>
                   )}
@@ -115,19 +136,19 @@ export default function ShopModal({ coin, onClose }) {
                           style={{
                             width: 64,
                             height: 64,
-                            border: `2px solid ${isActive ? WL.greenBright : WL.borderLight}`,
+                            border: `2px solid ${isActive ? WL.gold : WL.borderLight}`,
                             opacity: isActive ? 1 : 0.7,
-                            boxShadow: isActive ? '0 2px 12px rgba(61,158,95,0.2)' : 'none',
+                            boxShadow: isActive ? '0 2px 12px rgba(200,144,74,0.28)' : 'none',
                           }}
                         >
                           {p.imageUrl ? (
                             <img src={p.imageUrl} alt="" className="w-full h-full object-cover" />
                           ) : (
                             <div
-                              className="w-full h-full flex items-center justify-center text-xl"
-                              style={{ background: WL.skyAccentSoft }}
+                              className="w-full h-full flex items-center justify-center text-[10px]"
+                              style={{ background: WL.skyAccentSoft, color: WL.textSoft }}
                             >
-                              🛍️
+                              —
                             </div>
                           )}
                         </button>
@@ -137,9 +158,9 @@ export default function ShopModal({ coin, onClose }) {
                 )}
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-4 md:pt-2">
                 <div className="flex items-start justify-between gap-3 flex-wrap">
-                  <h3 className="text-lg font-bold leading-snug" style={{ color: WL.text }}>
+                  <h3 className="wl-display text-xl leading-snug" style={{ color: WL.text }}>
                     {activeProduct.name}
                   </h3>
                   {activeProduct.price && (
@@ -147,8 +168,8 @@ export default function ShopModal({ coin, onClose }) {
                       className="text-sm font-bold px-3 py-1 rounded-full flex-shrink-0"
                       style={{
                         color: WL.green,
-                        background: WL.skyAccentSoft,
-                        border: `1px solid ${WL.borderLight}`,
+                        background: 'rgba(200, 144, 74, 0.12)',
+                        border: `1px solid ${WL.border}`,
                       }}
                     >
                       {activeProduct.price}
@@ -167,24 +188,20 @@ export default function ShopModal({ coin, onClose }) {
                     href={activeProduct.link}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
-                    style={{
-                      background: `linear-gradient(135deg, ${WL.greenBright}, #4ade80)`,
-                      boxShadow: '0 4px 16px rgba(61,158,95,0.25)',
-                    }}
+                    className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-semibold text-white transition-all hover:opacity-90"
+                    style={primaryBtnStyle}
                   >
-                    Køb nu ↗
+                    Køb nu
                   </a>
                 )}
               </div>
-            </>
+            </div>
           ) : (
-            <div className="py-14 text-center">
-              <span className="text-5xl block mb-3 opacity-50">🛍️</span>
-              <p className="font-medium" style={{ color: WL.textMuted }}>
+            <div className="py-16 text-center">
+              <p className="wl-display text-xl" style={{ color: WL.textOnModal }}>
                 Ingen produkter i denne kategori endnu
               </p>
-              <p className="text-sm mt-2" style={{ color: WL.textSoft }}>
+              <p className="text-sm mt-2" style={{ color: WL.textSoftOnModal }}>
                 Vælg en anden kategori ovenfor
               </p>
             </div>
@@ -193,15 +210,12 @@ export default function ShopModal({ coin, onClose }) {
           {(coin.content?.sections ?? []).map((s, i) => (
             <div
               key={i}
-              className="rounded-xl p-4 mt-2"
-              style={{
-                background: WL.skyAccentSoft,
-                border: `1px solid ${WL.borderLight}`,
-              }}
+              className="rounded-2xl p-4 mt-2"
+              style={airTileStyle}
             >
               {s.heading && (
-                <h4 className="text-sm font-bold mb-1.5" style={{ color: WL.green }}>
-                  {s.heading}
+                <h4 className="wl-display text-base md:text-lg mb-1.5" style={{ color: WL.textOnModal }}>
+                  {stripLeadingEmoji(s.heading)}
                 </h4>
               )}
               {s.text && (

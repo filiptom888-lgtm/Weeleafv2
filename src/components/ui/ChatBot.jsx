@@ -9,14 +9,14 @@ You help users understand WL's products, principles, and community. You know abo
 - Hemptation: Wholesome hemp skincare line and OEKO-TEX certified hemp bedding from Hemp CPH
 - WL Hive: Carbon-negative modular housing with AI management, hempcrete construction, NBC safety features
 - The Shop: Collective buying model with MOQ logic to prevent overproduction
-- Social channels: Instagram/Facebook/X @weeleaf
+- Social channels: Instagram @weeleaf, Facebook https://www.facebook.com/profile.php?id=61584251567563, X @weeleaf
 - Donations: 1 DKK symbolic pledge to show community interest
 - Community: looking for developers, designers, creators — contact wl@weeleaf.com
-Keep responses warm, concise (2-4 sentences), and inspiring. Use occasional nature emoji.`
+Keep responses warm, concise (2-4 sentences), and inspiring. Do not use emoji.`
 
 const INITIAL_MESSAGE = {
   role: 'assistant',
-  content: "🌿 Hi! I'm Leafy, your WeeLeaf guide. Ask me anything about our sustainable community, hemp products, or how to get involved!",
+  content: "Hi! I'm Leafy, your WeeLeaf guide. Ask me anything about our sustainable community, hemp products, or how to get involved!",
 }
 
 export default function ChatBot() {
@@ -60,7 +60,7 @@ export default function ChatBot() {
         ...prev,
         {
           role: 'assistant',
-          content: '🔑 To enable AI responses, please add an OpenAI API key using the key icon above. Your key stays in memory only — never stored.',
+          content: 'To enable AI responses, please add an OpenAI API key using the API button above. Your key stays in memory only — never stored.',
         },
       ])
       setIsLoading(false)
@@ -99,7 +99,7 @@ export default function ChatBot() {
         ...prev,
         {
           role: 'assistant',
-          content: `🌿 Hmm, something went wrong: ${err.message}. Please check your API key and try again.`,
+          content: `Something went wrong: ${err.message}. Please check your API key and try again.`,
         },
       ])
     } finally {
@@ -125,15 +125,15 @@ export default function ChatBot() {
       <div className="flex items-center justify-between px-4 py-3 border-b border-green-500/20">
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-          <span className="text-white text-sm font-semibold">Leafy Assistant</span>
+          <span className="text-white text-sm wl-display">Leafy Assistant</span>
         </div>
         <div className="flex items-center gap-1.5">
           <button
             onClick={() => setShowKeyInput((v) => !v)}
             className="text-white/40 hover:text-white/80 transition-colors px-1 py-0.5 rounded text-xs"
-            title="Set OpenAI API Key"
+            title="OpenAI API-nøgle"
           >
-            🔑
+            API
           </button>
           <button
             onClick={toggleChat}

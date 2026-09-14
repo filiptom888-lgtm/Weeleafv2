@@ -32,7 +32,7 @@ export default function MainSceneBackground({ visible = true, paused = false }) 
         style={{
           zIndex: 3,
           background:
-            'radial-gradient(ellipse 90% 75% at 50% 50%, transparent 45%, rgba(26, 16, 8, 0.1) 100%)',
+            'radial-gradient(ellipse 90% 75% at 50% 50%, transparent 42%, rgba(180, 72, 22, 0.14) 100%)',
         }}
       />
     </div>

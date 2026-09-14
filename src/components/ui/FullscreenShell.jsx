@@ -1,7 +1,36 @@
 import React, { useEffect, useRef } from 'react'
 import { gsap } from 'gsap'
 import useStore from '../../store/useStore'
-import { WL } from '../../styles/modalTheme'
+import { WL, pillHeaderStyle } from '../../styles/modalTheme'
+
+const WIDTHS = {
+  'max-w-7xl': 'max-w-7xl',
+  'max-w-6xl': 'max-w-6xl',
+  'max-w-5xl': 'max-w-5xl',
+  'max-w-4xl': 'max-w-4xl',
+  'max-w-3xl': 'max-w-3xl',
+  'max-w-2xl': 'max-w-2xl',
+  'max-w-lg': 'max-w-lg',
+}
+
+function CloseMark() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden>
+      <path
+        d="M3.1 3.3c2.8 2.1 5.2 4.7 7.8 7.4"
+        stroke="currentColor"
+        strokeWidth="1.55"
+        strokeLinecap="round"
+      />
+      <path
+        d="M11 3.3c-2.8 2.1-5.3 4.7-7.9 7.4"
+        stroke="currentColor"
+        strokeWidth="1.55"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
 
 /**
  * Fullscreen overlay chrome — background is shared ModalSceneBackground in App.jsx.
@@ -16,6 +45,7 @@ export default function FullscreenShell({
   headerExtra,
   contentClassName = 'max-w-4xl',
   headerLayout = 'pill',
+  contentAlign = 'start',
 }) {
   const uiRef = useRef()
   const scrollRef = useRef(null)
@@ -52,18 +82,7 @@ export default function FullscreenShell({
     })
   }
 
-  const maxW =
-    contentClassName === 'max-w-7xl'
-      ? 'max-w-7xl'
-      : contentClassName === 'max-w-6xl'
-        ? 'max-w-6xl'
-        : contentClassName === 'max-w-5xl'
-        ? 'max-w-5xl'
-        : contentClassName === 'max-w-3xl'
-          ? 'max-w-3xl'
-          : contentClassName === 'max-w-lg'
-            ? 'max-w-lg'
-            : 'max-w-5xl'
+  const maxW = WIDTHS[contentClassName] || 'max-w-5xl'
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col min-h-0 overflow-hidden pointer-events-none">
@@ -71,38 +90,26 @@ export default function FullscreenShell({
         <button
           type="button"
           onClick={handleClose}
-          className="fixed top-4 right-4 z-[60] w-10 h-10 flex items-center justify-center text-lg rounded-full transition-all hover:scale-105 hover:bg-white"
-          style={{
-            color: '#1a2e3a',
-            background: 'rgba(255,255,255,0.88)',
-            border: '1px solid rgba(255,255,255,0.55)',
-            boxShadow: '0 4px 20px rgba(30,90,140,0.18)',
-          }}
-          aria-label="Close"
+          className="wl-close fixed top-4 right-4 z-[60]"
+          aria-label="Luk"
         >
-          ×
+          <CloseMark />
         </button>
 
         {headerLayout === 'pill' && title && (
           <div className={`flex-shrink-0 px-3 sm:px-4 md:px-5 pt-5 pb-1 mx-auto w-full ${maxW}`}>
             <div
-              className="inline-flex flex-col gap-0.5 max-w-[calc(100%-3rem)] rounded-2xl px-4 py-3 backdrop-blur-xl"
-              style={{
-                background: 'rgba(255, 255, 255, 0.82)',
-                border: '1px solid rgba(255, 255, 255, 0.55)',
-                boxShadow: '0 8px 32px rgba(30,90,140,0.1)',
-              }}
+              className="inline-flex flex-col gap-0.5 max-w-[calc(100%-3rem)] rounded-3xl px-4 py-3 backdrop-blur-xl"
+              style={pillHeaderStyle}
             >
-              {eyebrow && (
-                <span className="text-[10px] uppercase tracking-[0.22em] font-semibold" style={{ color: WL.skyAccent }}>
-                  {eyebrow}
-                </span>
-              )}
-              <h1 className="text-lg md:text-xl font-bold leading-tight tracking-tight text-[#1a2e3a]">
+              {eyebrow && <span className="wl-eyebrow">{eyebrow}</span>}
+              <h1 className="wl-display text-xl md:text-2xl leading-tight" style={{ color: WL.text }}>
                 {title}
               </h1>
               {tagline && (
-                <p className="text-xs md:text-sm leading-snug text-[rgba(26,46,58,0.75)]">{tagline}</p>
+                <p className="wl-tagline text-sm md:text-base leading-snug mt-0.5" style={{ color: WL.textMuted }}>
+                  {tagline}
+                </p>
               )}
             </div>
             {headerExtra}
@@ -113,7 +120,9 @@ export default function FullscreenShell({
           <div
             className={`mx-auto w-full px-3 sm:px-4 md:px-5 ${
               headerLayout === 'pill' ? 'py-4 md:py-5' : 'py-5 md:py-6'
-            } ${contentClassName}`}
+            } ${contentClassName} ${
+              contentAlign === 'center' ? 'min-h-full flex flex-col justify-center' : ''
+            }`}
           >
             {children}
           </div>
@@ -123,8 +132,8 @@ export default function FullscreenShell({
           <footer
             className="flex-shrink-0 border-t backdrop-blur-xl"
             style={{
-              background: 'rgba(255, 255, 255, 0.82)',
-              borderColor: 'rgba(255, 255, 255, 0.55)',
+              background: 'rgba(255, 251, 244, 0.88)',
+              borderColor: WL.borderLight,
             }}
           >
             {footer}

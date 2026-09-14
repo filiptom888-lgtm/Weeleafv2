@@ -76,6 +76,12 @@ export const api = {
   register: (name, email, password) =>
     request('/auth/register', { method: 'POST', body: { name, email, password } }),
 
+  forgotPassword: (email) =>
+    request('/auth/forgot-password', { method: 'POST', body: { email } }),
+
+  resetPassword: (token, password) =>
+    request('/auth/reset-password', { method: 'POST', body: { token, password } }),
+
   adminLogin: (password) =>
     request('/auth/admin', { method: 'POST', body: { password } }),
 
@@ -173,4 +179,32 @@ export const api = {
 
   deleteUser: (userId) =>
     request(`/users/${encodeURIComponent(userId)}`, { method: 'DELETE', auth: true }),
+
+  fetchUser: (userId) =>
+    request(`/users/${encodeURIComponent(userId)}`),
+
+  fetchConversations: () =>
+    request('/conversations', { auth: true }),
+
+  openConversation: (userId) =>
+    request('/conversations', { method: 'POST', body: { userId }, auth: true }),
+
+  fetchMessages: (conversationId, after) =>
+    request(
+      `/conversations/${encodeURIComponent(conversationId)}/messages${after ? `?after=${encodeURIComponent(after)}` : ''}`,
+      { auth: true }
+    ),
+
+  sendMessage: (conversationId, body) =>
+    request(`/conversations/${encodeURIComponent(conversationId)}/messages`, {
+      method: 'POST',
+      body: { body },
+      auth: true,
+    }),
+
+  markConversationRead: (conversationId) =>
+    request(`/conversations/${encodeURIComponent(conversationId)}/read`, {
+      method: 'POST',
+      auth: true,
+    }),
 }

@@ -37,8 +37,7 @@ function ProductEditor({ product, catColor, onSave, onCancel }) {
       </div>
       <input className={inputCls} value={(!draft.imageUrl || draft.imageUrl.startsWith('data:')) ? '' : draft.imageUrl} onChange={(e) => set({ imageUrl: e.target.value })} placeholder="Billede URL" />
       <label className="flex items-center gap-2 cursor-pointer px-3 py-2 rounded-lg border border-dashed  transition-colors">
-        <span>📁</span>
-        <span className="text-xs" style={{ color: WL.textSoft }}>Upload billede</span>
+        <span className="text-xs" style={{ color: WL.textSoft }}>Vælg fil</span>
         <input type="file" accept="image/*" className="hidden" onChange={(e) => {
           const file = e.target.files?.[0]
           if (!file) return
@@ -68,7 +67,7 @@ function ShopAdmin() {
   const [expandedCatId, setExpandedCatId] = useState(null)
   const [editingKey, setEditingKey] = useState(null) // `new-${catId}` or productId
   const [addingCat, setAddingCat] = useState(false)
-  const [newCat, setNewCat] = useState({ label: '', icon: '🛍️', color: '#60a5fa' })
+  const [newCat, setNewCat] = useState({ label: '', icon: '', color: '#60a5fa' })
   const inputCls = 'w-full text-sm rounded-lg px-3 py-2 outline-none border transition-colors'
   const inputStyle = accountInputStyle
   const CAT_COLORS = ['#60a5fa', '#86efac', '#fbbf24', '#c084fc', '#f472b6', '#34d399']
@@ -83,7 +82,7 @@ function ShopAdmin() {
             style={{ background: expandedCatId === cat.id ? `${cat.color}12` : 'rgba(255,255,255,0.03)' }}
             onClick={() => setExpandedCatId(expandedCatId === cat.id ? null : cat.id)}
           >
-            <span className="text-xl">{cat.icon}</span>
+            {cat.icon ? <span className="text-sm font-semibold" style={{ color: cat.color }}>{cat.label?.[0]}</span> : <span className="w-2 h-2 rounded-full" style={{ background: cat.color }} />}
             <div className="flex-1 min-w-0">
               <div className="text-sm font-medium" style={{ color: WL.text }}>{cat.label}</div>
               <div className="text-[10px]" style={{ color: WL.textSoft }}>{cat.products?.length ?? 0} produkter</div>
@@ -120,7 +119,7 @@ function ShopAdmin() {
                         <div className="text-sm truncate" style={{ color: WL.textMuted }}>{p.name || '(navnløs)'}</div>
                         {p.price && <div className="text-[10px]" style={{ color: cat.color }}>{p.price}</div>}
                       </div>
-                      <button onClick={() => setEditingKey(p.id)} className="hover:opacity-80 transition-colors text-sm px-1" style={{ color: WL.textMuted }}>✏</button>
+                      <button onClick={() => setEditingKey(p.id)} className="hover:opacity-80 transition-colors text-xs px-1" style={{ color: WL.textMuted }}>Rediger</button>
                       <button onClick={() => deleteShopProduct(cat.id, p.id)} className="hover:text-red-500 transition-colors text-base leading-none" style={{ color: WL.textSoft }}>×</button>
                     </div>
                   )}
@@ -147,10 +146,7 @@ function ShopAdmin() {
       {/* Add category */}
       {addingCat ? (
         <div className="rounded-xl p-4 space-y-3" style={{ background: 'rgba(255,255,255,0.72)', border: '1px solid rgba(255,255,255,0.10)' }}>
-          <div className="grid grid-cols-2 gap-2">
-            <input className={inputCls} value={newCat.label} onChange={(e) => setNewCat((d) => ({ ...d, label: e.target.value }))} placeholder="Kategorinavn" />
-            <input className={inputCls} value={newCat.icon} onChange={(e) => setNewCat((d) => ({ ...d, icon: e.target.value }))} placeholder="Ikon (emoji)" />
-          </div>
+          <input className={inputCls} value={newCat.label} onChange={(e) => setNewCat((d) => ({ ...d, label: e.target.value }))} placeholder="Kategorinavn" />
           <div className="flex gap-2">
             {CAT_COLORS.map((c) => (
               <button key={c} onClick={() => setNewCat((d) => ({ ...d, color: c }))} className="w-6 h-6 rounded-full flex-shrink-0 transition-transform hover:scale-125" style={{ background: c, boxShadow: newCat.color === c ? `0 0 0 2px white, 0 0 8px ${c}` : 'none' }} />
@@ -161,7 +157,7 @@ function ShopAdmin() {
               onClick={() => {
                 if (!newCat.label.trim()) return
                 addShopCategory({ id: `cat-${Date.now()}`, label: newCat.label.trim(), icon: newCat.icon, color: newCat.color, products: [] })
-                setNewCat({ label: '', icon: '🛍️', color: '#60a5fa' })
+                setNewCat({ label: '', icon: '', color: '#60a5fa' })
                 setAddingCat(false)
               }}
               className="flex-1 py-2 rounded-xl text-sm font-semibold text-white transition-all"
@@ -212,8 +208,7 @@ function PendingShopAdmin() {
 
       {pending.length === 0 && (
         <div className="flex flex-col items-center py-10 gap-2 rounded-xl" style={{ background: 'rgba(255,255,255,0.65)', border: '1px solid rgba(255,255,255,0.06)' }}>
-          <span className="text-3xl opacity-30">✅</span>
-          <p className="text-xs" style={{ color: WL.textSoft }}>Ingen afventende produkter</p>
+          <p className="wl-display text-lg" style={{ color: WL.textSoft }}>Ingen afventende produkter</p>
         </div>
       )}
 
@@ -227,8 +222,8 @@ function PendingShopAdmin() {
             {sub.product.imageUrl ? (
               <img src={sub.product.imageUrl} alt="" className="w-14 h-14 rounded-lg object-cover flex-shrink-0" onError={(e) => (e.target.style.display = 'none')} />
             ) : (
-              <div className="w-14 h-14 rounded-lg flex items-center justify-center text-2xl flex-shrink-0" style={{ background: `${sub.categoryColor}18` }}>
-                {sub.categoryIcon || '🛍️'}
+              <div className="w-14 h-14 rounded-lg flex items-center justify-center text-xs font-semibold flex-shrink-0" style={{ background: `${sub.categoryColor}18`, color: WL.textMuted }}>
+                {(sub.categoryLabel || 'WL').slice(0, 2).toUpperCase()}
               </div>
             )}
             <div className="flex-1 min-w-0">
@@ -253,14 +248,14 @@ function PendingShopAdmin() {
               className="flex-1 py-2 rounded-xl text-xs font-semibold text-white transition-all"
               style={{ background: 'rgba(74,222,128,0.22)', border: '1px solid rgba(74,222,128,0.4)', color: WL.green }}
             >
-              ✓ Godkend
+              Godkend
             </button>
             <button
               onClick={() => handleReject(sub.id)}
               className="flex-1 py-2 rounded-xl text-xs font-semibold transition-all"
               style={{ background: 'rgba(248,113,113,0.12)', border: '1px solid rgba(248,113,113,0.3)', color: '#fca5a5' }}
             >
-              ✕ Afvis
+              Afvis
             </button>
           </div>
         </div>
@@ -312,7 +307,7 @@ function blankCoin(existingCount) {
       title: 'New Coin',
       tagline: 'Add your tagline here.',
       sections: [
-        { heading: '✨ Section Title', text: 'Add your content here.' },
+        { heading: 'Ny sektion', text: 'Tilføj indhold her.' },
       ],
     },
   }
@@ -353,7 +348,7 @@ function CoinRow({ coin, index, onEdit, onDelete, isEditing, onSelect }) {
       </div>
 
       {LOCKED_COIN_IDS.includes(coin.id) ? (
-        <span className="text-xs px-1" style={{ color: WL.textSoft }} title="Låst — kan ikke slettes">🔒</span>
+        <span className="text-[10px] px-1 wl-eyebrow" style={{ color: WL.textSoft }} title="Låst — kan ikke slettes">Låst</span>
       ) : (
         <button
           className="hover:text-red-500 transition-colors text-base leading-none px-1"
@@ -370,6 +365,7 @@ function CoinRow({ coin, index, onEdit, onDelete, isEditing, onSelect }) {
 
 /* ─── Full editor for selected coin ─────────────────────────────────── */
 function CoinEditor({ coin, onSave, onClose }) {
+  const [saving, setSaving] = useState(false)
   const [draft, setDraft] = useState(() => ({
     ...coin,
     content: {
@@ -387,7 +383,7 @@ function CoinEditor({ coin, onSave, onClose }) {
   const addSection = () =>
     setDraft((d) => ({
       ...d,
-      content: { ...d.content, sections: [...d.content.sections, { heading: '✨ New Section', text: '' }] },
+      content: { ...d.content, sections: [...d.content.sections, { heading: 'Ny sektion', text: '' }] },
     }))
   const removeSection = (i) =>
     setDraft((d) => ({
@@ -397,21 +393,25 @@ function CoinEditor({ coin, onSave, onClose }) {
 
   const inputClass = accountInputCls
 
+  const submit = async () => {
+    setSaving(true)
+    await onSave(draft)
+    setSaving(false)
+  }
+
   const isLocked = LOCKED_COIN_IDS.includes(coin.id)
 
   if (isLocked) {
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: 'rgba(255,200,50,0.06)', border: '1px solid rgba(255,200,50,0.18)' }}>
-          <span>🔒</span>
-          <p className="text-xs text-yellow-200/60">Dette coin er låst. Du kan kun ændre billedet.</p>
+          <p className="text-xs" style={{ color: WL.textMuted }}>Dette coin er låst. Du kan kun ændre billedet.</p>
         </div>
 
         {/* Image-only editor */}
         <div className="space-y-2">
           <label className="text-[10px] uppercase tracking-widest" style={{ color: WL.textSoft }}>Coin Image</label>
           <label className="flex items-center gap-3 cursor-pointer px-3 py-2.5 rounded-xl border border-dashed transition-colors hover:border-green-500/40 hover:bg-green-500/5" style={{ borderColor: 'rgba(255,255,255,0.15)' }}>
-            <span className="text-xl">📁</span>
             <div>
               <div className="text-sm" style={{ color: WL.textMuted }}>Upload billede</div>
               <div className="text-[10px]" style={{ color: WL.textSoft }}>PNG, JPG, GIF, WebP</div>
@@ -432,7 +432,7 @@ function CoinEditor({ coin, onSave, onClose }) {
         </div>
 
         <div className="flex gap-2 pt-2">
-          <button onClick={() => onSave(draft)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-all" style={{ background: 'rgba(74,222,128,0.3)', border: '1px solid rgba(74,222,128,0.4)' }}>Gem billede</button>
+          <button onClick={submit} disabled={saving} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-all disabled:opacity-50" style={{ background: 'rgba(74,222,128,0.3)', border: '1px solid rgba(74,222,128,0.4)' }}>{saving ? 'Gemmer…' : 'Gem billede'}</button>
           <button onClick={onClose} className="px-4 py-2.5 rounded-xl text-sm text-inherit hover:text-inherit border transition-colors" style={{ borderColor: WL.borderLight }}>Annuller</button>
         </div>
       </div>
@@ -474,7 +474,6 @@ function CoinEditor({ coin, onSave, onClose }) {
           className="flex items-center gap-3 cursor-pointer px-3 py-2.5 rounded-xl border border-dashed transition-colors hover:border-green-500/40 hover:bg-green-500/5"
           style={{ borderColor: 'rgba(255,255,255,0.15)' }}
         >
-          <span className="text-xl">📁</span>
           <div>
             <div className="text-sm" style={{ color: WL.textMuted }}>Upload image</div>
             <div className="text-[10px]" style={{ color: WL.textSoft }}>PNG, JPG, WebP — optimized & saved on server</div>
@@ -524,7 +523,7 @@ function CoinEditor({ coin, onSave, onClose }) {
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-xs text-inherit truncate">
-                {draft.imageUrl.startsWith('data:') ? '📎 Uploaded file' : draft.imageUrl}
+                {draft.imageUrl.startsWith('data:') ? 'Uploadet fil' : draft.imageUrl}
               </div>
               <button
                 onClick={() => set({ imageUrl: '' })}
@@ -612,11 +611,12 @@ function CoinEditor({ coin, onSave, onClose }) {
       {/* Actions */}
       <div className="flex gap-2 pt-2">
         <button
-          onClick={() => onSave(draft)}
-          className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all text-white"
+          onClick={submit}
+          disabled={saving}
+          className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all text-white disabled:opacity-50"
           style={{ background: 'linear-gradient(135deg, rgba(74,222,128,0.3), rgba(16,185,129,0.25))', border: '1px solid rgba(74,222,128,0.4)' }}
         >
-          Save Changes
+          {saving ? 'Gemmer live…' : 'Gem til live site'}
         </button>
         <button
           onClick={onClose}
@@ -665,7 +665,7 @@ function BlogAdmin() {
   if (draft) {
     return (
       <div className="space-y-3">
-        <button onClick={closeEditor} className="flex items-center gap-1.5 text-xs text-inherit hover:text-inherit transition-colors">← Tilbage til liste</button>
+        <button onClick={closeEditor} className="flex items-center gap-1.5 text-xs text-inherit hover:text-inherit transition-colors">Tilbage til liste</button>
         <h3 className="text-sm font-semibold text-inherit">{isNew ? 'Nyt indlæg' : 'Rediger indlæg'}</h3>
         <input className={inputCls} value={draft.title} onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))} placeholder="Titel" />
         <div className="grid grid-cols-2 gap-2">
@@ -688,7 +688,6 @@ function BlogAdmin() {
             className="flex items-center gap-3 cursor-pointer px-3 py-2.5 rounded-xl border border-dashed transition-colors hover:border-teal-500/40 hover:bg-teal-500/5"
             style={{ borderColor: 'rgba(255,255,255,0.15)' }}
           >
-            <span className="text-xl">📁</span>
             <div>
               <div className="text-sm" style={{ color: WL.textMuted }}>Upload billede</div>
               <div className="text-[10px]" style={{ color: WL.textSoft }}>PNG, JPG, WebP</div>
@@ -766,7 +765,7 @@ function BlogAdmin() {
             <div className="text-sm text-inherit font-medium leading-snug truncate">{post.title}</div>
             <div className="text-[10px] text-inherit mt-0.5">{post.author} · {post.date ? new Date(post.date).toLocaleDateString('da-DK') : ''}</div>
           </div>
-          <button onClick={() => openEdit(post)} className="hover:opacity-80 transition-colors text-sm px-1 flex-shrink-0" style={{ color: WL.textMuted }}>✏</button>
+          <button onClick={() => openEdit(post)} className="hover:opacity-80 transition-colors text-xs px-1 flex-shrink-0" style={{ color: WL.textMuted }}>Rediger</button>
           <button onClick={() => { if (window.confirm('Slet indlæg?')) deleteBlogPost(post.id) }} className="hover:text-red-500 transition-colors text-base leading-none flex-shrink-0" style={{ color: WL.textSoft }}>×</button>
         </div>
       ))}
@@ -847,7 +846,7 @@ function StatsAdmin() {
         + Tilføj tæller
       </button>
       <button onClick={save} className="w-full py-2 rounded-xl text-xs font-semibold text-white/90 transition-all" style={{ background: 'rgba(74,222,128,0.15)', border: '1px solid rgba(74,222,128,0.3)' }}>
-        💾 Gem tæller
+        Gem tæller
       </button>
       <button onClick={reset} className="w-full py-2 rounded-xl text-xs text-inherit hover:opacity-80 transition-colors">↺ Nulstil tæller</button>
     </div>
@@ -877,7 +876,7 @@ function DonationAdmin() {
 
   return (
     <div className="space-y-4">
-      <div className="text-[11px] uppercase tracking-widest font-semibold" style={{ color: WL.textSoft }}>💳 Betalingsinfo</div>
+      <div className="wl-eyebrow" style={{ color: WL.textSoft }}>Betalingsinfo</div>
 
       {/* MobilePay number */}
       <div>
@@ -930,7 +929,7 @@ function DonationAdmin() {
         <button onClick={handleSave}
           className="flex-1 py-2 rounded-xl text-xs font-bold transition-all"
           style={{ background: 'rgba(236,72,153,0.25)', border: '1px solid rgba(236,72,153,0.4)', color: '#f9a8d4' }}
-        >💾 Gem</button>
+        >Gem</button>
         <button onClick={() => { if (window.confirm('Nulstil betalingsinfo?')) { resetDonationConfig(); setLocal({ mobilepay: '', link: '', qrImageUrl: '' }) } }}
           className="px-3 py-2 rounded-xl text-xs font-semibold text-inherit hover:opacity-80 transition-colors"
           style={{ background: 'rgba(255,255,255,0.72)', border: `1px solid ${WL.borderLight}` }}
@@ -966,21 +965,30 @@ async function publishConfigToGitHub({ token, owner, repo, branch }, config) {
 function PublishAdmin() {
   const githubSettings = useStore((s) => s.githubSettings)
   const setGithubSettings = useStore((s) => s.setGithubSettings)
+  const persistLiveConfig = useStore((s) => s.persistLiveConfig)
   const [status, setStatus] = useState('idle') // idle | loading | ok | error
   const [errMsg, setErrMsg] = useState('')
+  const [okMsg, setOkMsg] = useState('')
   const [showToken, setShowToken] = useState(false)
   const inputCls = accountInputCls
 
   const save = (patch) => setGithubSettings(patch)
 
   const handlePublish = async () => {
-    if (!githubSettings.token) { setErrMsg('Indsæt dit GitHub token først'); setStatus('error'); return }
-    setStatus('loading'); setErrMsg('')
+    setStatus('loading'); setErrMsg(''); setOkMsg('')
     try {
-      const { coins, shopCategories, blogPosts, donationConfig } = useStore.getState()
-      await publishConfigToGitHub(githubSettings, { coins, shopCategories, blogPosts, donationConfig })
+      const live = await persistLiveConfig()
+      if (!live.ok) throw new Error(live.error || 'Kunne ikke gemme til databasen.')
+
+      if (githubSettings.token) {
+        const { coins, shopCategories, blogPosts, donationConfig } = useStore.getState()
+        await publishConfigToGitHub(githubSettings, { coins, shopCategories, blogPosts, donationConfig })
+        setOkMsg('Gemt live i databasen. Backup skrevet til GitHub (wl-config.json).')
+      } else {
+        setOkMsg('Gemt live i databasen. (GitHub-token er valgfrit — kun backup.)')
+      }
       setStatus('ok')
-      setTimeout(() => setStatus('idle'), 4000)
+      setTimeout(() => setStatus('idle'), 5000)
     } catch (e) {
       setErrMsg(e.message)
       setStatus('error')
@@ -989,18 +997,19 @@ function PublishAdmin() {
 
   return (
     <div className="space-y-5">
-      <div className="text-[11px] uppercase tracking-widest font-semibold" style={{ color: WL.textSoft }}>🚀 Publicér Live</div>
+      <div className="wl-eyebrow" style={{ color: WL.textSoft }}>Publicér live</div>
 
-      {/* Info box */}
-      <div className="rounded-xl p-3 text-xs text-inherit space-y-1" style={{ background: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.15)' }}>
-        <p>Gem dine ændringer direkte til GitHub. Siden genbygges automatisk (~1 min), og alle brugere ser de nye indstillinger.</p>
+      <div className="rounded-xl p-3 text-xs space-y-1.5" style={{ background: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.15)', color: WL.textMuted }}>
+        <p><strong style={{ color: WL.text }}>Live site</strong> læser noder, shop og tekst fra databasen — ikke fra GitHub.</p>
+        <p>Klik her gemmer til databasen med det samme. GitHub er kun en valgfri backup af <code>wl-config.json</code>.</p>
+        <p>Tekst på selve mønten sidder i billedet. Label/indhold i editoren ændrer popup-tekst, ikke PNG’en.</p>
       </div>
 
       {/* Token */}
       <div>
         <label className="block text-xs mb-1" style={{ color: WL.textSoft }}>
           GitHub Personal Access Token
-          <a href="https://github.com/settings/tokens/new?scopes=repo&description=WL+Admin" target="_blank" rel="noopener noreferrer" className="ml-2 text-green-400/70 hover:text-green-400 underline">Opret token ↗</a>
+          <a href="https://github.com/settings/tokens/new?scopes=repo&description=WL+Admin" target="_blank" rel="noopener noreferrer" className="ml-2 text-green-400/70 hover:text-green-400 underline">Opret token</a>
         </label>
         <div className="flex gap-2">
           <input
@@ -1010,7 +1019,7 @@ function PublishAdmin() {
             onChange={(e) => save({ token: e.target.value })}
             placeholder="ghp_xxxxxxxxxxxx"
           />
-          <button onClick={() => setShowToken(s => !s)} className="px-2 text-inherit hover:opacity-80 text-xs">{showToken ? '🙈' : '👁'}</button>
+          <button onClick={() => setShowToken(s => !s)} className="px-2 text-inherit hover:opacity-80 text-xs">{showToken ? 'Skjul' : 'Vis'}</button>
         </div>
         <p className="text-[10px] text-inherit mt-1">Gemmes i databasen. Vælg scope: <code className="text-inherit">repo</code> (eller <code className="text-inherit">contents:write</code> for fine-grained).</p>
       </div>
@@ -1038,9 +1047,12 @@ function PublishAdmin() {
         className="w-full py-3 rounded-xl text-sm font-bold transition-all disabled:opacity-50"
         style={{ background: status === 'ok' ? 'rgba(74,222,128,0.3)' : status === 'error' ? 'rgba(248,113,113,0.2)' : 'rgba(74,222,128,0.2)', border: `1px solid ${status === 'ok' ? 'rgba(74,222,128,0.5)' : status === 'error' ? 'rgba(248,113,113,0.4)' : 'rgba(74,222,128,0.35)'}`, color: status === 'error' ? '#fca5a5' : '#86efac' }}
       >
-        {status === 'loading' ? '⏳ Publicerer…' : status === 'ok' ? '✅ Publiceret! Siden genbygges…' : status === 'error' ? '❌ Fejl — prøv igen' : '🚀 Publicér Live'}
+        {status === 'loading' ? 'Gemmer live…' : status === 'ok' ? 'Gemt live' : status === 'error' ? 'Fejl — prøv igen' : 'Gem live nu'}
       </button>
 
+      {status === 'ok' && okMsg && (
+        <p className="text-xs" style={{ color: WL.green }}>{okMsg}</p>
+      )}
       {status === 'error' && errMsg && (
         <p className="text-xs text-red-400/80 break-all">{errMsg}</p>
       )}
@@ -1322,7 +1334,7 @@ function UsersAdmin() {
               className="text-xs px-3 py-1.5 rounded-lg disabled:opacity-40"
               style={{ color: WL.textMuted, border: `1px solid ${WL.borderLight}` }}
             >
-              ← Forrige
+              Forrige
             </button>
             <span className="text-xs tabular-nums" style={{ color: WL.textSoft }}>
               Side {safePage} / {totalPages}
@@ -1334,7 +1346,7 @@ function UsersAdmin() {
               className="text-xs px-3 py-1.5 rounded-lg disabled:opacity-40"
               style={{ color: WL.textMuted, border: `1px solid ${WL.borderLight}` }}
             >
-              Næste →
+              Næste
             </button>
           </div>
         </div>
@@ -1353,8 +1365,12 @@ export function AdminDashboard() {
     refreshAdminData()
   }, [refreshAdminData])
 
-  const handleSave = useCallback((draft) => {
-    updateCoin(draft.id, draft)
+  const handleSave = useCallback(async (draft) => {
+    const res = await updateCoin(draft.id, draft)
+    if (!res?.ok) {
+      window.alert(res?.error || 'Kunne ikke gemme til serveren. Log ind som admin og prøv igen.')
+      return
+    }
     setEditingId(null)
   }, [updateCoin])
 
@@ -1385,14 +1401,14 @@ export function AdminDashboard() {
   const editingCoin = editingId ? coins.find((c) => c.id === editingId) : null
 
   const tabs = [
-    { key: 'coins', label: 'Nodes', icon: '🌿' },
-    { key: 'users', label: 'Brugere', icon: '👥' },
-    { key: 'shop', label: 'Shop', icon: '🛍️' },
-    { key: 'approvals', label: pendingCount ? `Godkend (${pendingCount})` : 'Godkend', icon: '✅' },
-    { key: 'blog', label: 'Blog', icon: '📝' },
-    { key: 'donation', label: 'Give', icon: '💳' },
-    { key: 'stats', label: 'Tæller', icon: '📊' },
-    { key: 'publish', label: 'Publicér', icon: '🚀' },
+    { key: 'coins', label: 'Nodes' },
+    { key: 'users', label: 'Brugere' },
+    { key: 'shop', label: 'Shop' },
+    { key: 'approvals', label: pendingCount ? `Godkend (${pendingCount})` : 'Godkend' },
+    { key: 'blog', label: 'Blog' },
+    { key: 'donation', label: 'Give' },
+    { key: 'stats', label: 'Tæller' },
+    { key: 'publish', label: 'Publicér' },
   ]
 
   return (
@@ -1467,7 +1483,7 @@ export function AdminDashboard() {
                     className="px-4 py-2.5 rounded-xl text-xs font-semibold"
                     style={{ color: WL.green, border: `1px solid ${WL.border}`, background: 'rgba(255,255,255,0.75)' }}
                   >
-                    📤 Eksporter
+                    Eksporter
                   </button>
                 </div>
                 <p className="text-xs" style={{ color: WL.textMuted }}>
@@ -1478,7 +1494,7 @@ export function AdminDashboard() {
             {editingId && editingCoin && (
               <>
                 <button type="button" onClick={() => setEditingId(null)} className="text-xs" style={{ color: WL.textMuted }}>
-                  ← Tilbage til liste
+                  Tilbage til liste
                 </button>
                 <CoinEditor coin={editingCoin} onSave={handleSave} onClose={() => setEditingId(null)} />
               </>

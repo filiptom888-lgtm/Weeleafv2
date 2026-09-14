@@ -9,6 +9,9 @@ import {
   accountLabelCls,
   accountCardStyle,
   adminShellStyle,
+  airGlassStyle,
+  airTileStyle,
+  primaryBtnStyle,
 } from '../../styles/modalTheme'
 import AccountTabBar from './AccountTabBar'
 import UserAvatar from './UserAvatar'
@@ -111,7 +114,7 @@ function ProfileAvatarPicker({ currentUser }) {
           border: `1px solid ${WL.borderLight}`,
         }}
       >
-        {uploading ? 'Uploader og beskærer…' : '📷 Upload dit eget billede'}
+        {uploading ? 'Uploader og beskærer…' : 'Upload dit eget billede'}
       </button>
 
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
@@ -226,14 +229,28 @@ function RootTabBar({ active, onChange, isAdmin }) {
   )
 }
 
+function clearResetQuery() {
+  const url = new URL(window.location.href)
+  if (!url.searchParams.has('wl_reset')) return
+  url.searchParams.delete('wl_reset')
+  const next = url.pathname + (url.search ? url.search : '') + url.hash
+  window.history.replaceState({}, '', next)
+}
+
 function AuthGate({ coin, onSuccess }) {
   const registerUser = useStore((s) => s.registerUser)
   const loginUser = useStore((s) => s.loginUser)
-  const [mode, setMode] = useState('login')
+  const requestPasswordReset = useStore((s) => s.requestPasswordReset)
+  const resetPasswordWithToken = useStore((s) => s.resetPasswordWithToken)
+  const initialReset = new URLSearchParams(window.location.search).get('wl_reset') || ''
+  const [mode, setMode] = useState(initialReset ? 'reset' : 'login')
+  const [resetToken] = useState(initialReset)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [password2, setPassword2] = useState('')
   const [error, setError] = useState('')
+  const [info, setInfo] = useState('')
   const [loading, setLoading] = useState(false)
   const emailRef = useRef()
 
@@ -241,126 +258,222 @@ function AuthGate({ coin, onSuccess }) {
     emailRef.current?.focus()
   }, [mode])
 
+  const goMode = (next) => {
+    setMode(next)
+    setError('')
+    setInfo('')
+  }
+
   const submit = async (e) => {
     e.preventDefault()
     setError('')
+    setInfo('')
     setLoading(true)
-    const result =
-      mode === 'login'
-        ? await loginUser({ email, password })
-        : await registerUser({ name, email, password })
+    let result
+    if (mode === 'login') {
+      result = await loginUser({ email, password })
+    } else if (mode === 'register') {
+      result = await registerUser({ name, email, password })
+    } else if (mode === 'forgot') {
+      result = await requestPasswordReset(email)
+      setLoading(false)
+      if (result.ok) {
+        setInfo(result.message || 'Hvis e-mailen findes, sender vi et link.')
+        return
+      }
+      setError(result.error)
+      return
+    } else {
+      if (password !== password2) {
+        setLoading(false)
+        setError('Adgangskoderne er ikke ens.')
+        return
+      }
+      result = await resetPasswordWithToken({ token: resetToken, password })
+      if (result.ok) clearResetQuery()
+    }
     setLoading(false)
     if (result.ok) onSuccess()
     else setError(result.error)
   }
 
+  const titles = {
+    login: { heading: 'Velkommen til WL', text: 'Log ind for at skrive i Community, sende beskeder og foreslå produkter til Shop.' },
+    register: { heading: 'Opret din WL-konto', text: 'Én konto til fællesskab, beskeder og shop.' },
+    forgot: { heading: 'Glemt adgangskode', text: 'Skriv din e-mail. Hvis den er registreret, sender vi et link.' },
+    reset: { heading: 'Ny adgangskode', text: 'Vælg en ny adgangskode til din WL-konto.' },
+  }
+  const copy = titles[mode] || titles.login
+
   return (
-    <div className="max-w-md mx-auto w-full">
-      <div className="text-center mb-8">
-        <div
-          className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center text-3xl"
-          style={{
-            background: `linear-gradient(135deg, ${coin.color}33, rgba(255,255,255,0.9))`,
-            border: `1px solid ${WL.border}`,
-            boxShadow: WL.shadow,
-          }}
-        >
-          🔑
-        </div>
-        <h2 className="text-2xl font-bold tracking-tight" style={{ color: WL.text }}>
-          Velkommen til WL
-        </h2>
-        <p className="text-sm mt-2 leading-relaxed" style={{ color: WL.textMuted }}>
-          Log ind for at skrive i Community og foreslå produkter til Shop.
-        </p>
-      </div>
+    <div className="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-10 w-full max-w-2xl mx-auto">
+      <img
+        src="/leafy.gif"
+        alt=""
+        className="w-32 md:w-40 flex-shrink-0 object-contain drop-shadow-lg"
+      />
 
-      <div
-        className="rounded-2xl p-1 mb-5"
-        style={{ background: 'rgba(255,255,255,0.5)', border: `1px solid ${WL.borderLight}` }}
-      >
-        <div className="flex gap-1">
-          {[
-            { key: 'login', label: 'Log ind' },
-            { key: 'register', label: 'Opret konto' },
-          ].map(({ key, label }) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => { setMode(key); setError('') }}
-              className="flex-1 py-2.5 rounded-xl text-xs font-semibold transition-all"
-              style={{
-                background: mode === key ? WL.greenBright : 'transparent',
-                color: mode === key ? '#fff' : WL.textMuted,
-              }}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <form onSubmit={submit} className="space-y-4">
-        {mode === 'register' && (
-          <div>
-            <label className={accountLabelCls} style={{ color: WL.textSoft }}>Navn</label>
-            <input
-              className={accountInputCls}
-              style={accountInputStyle}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Dit fulde navn"
-              autoComplete="name"
-            />
-          </div>
-        )}
-        <div>
-          <label className={accountLabelCls} style={{ color: WL.textSoft }}>E-mail</label>
-          <input
-            ref={emailRef}
-            className={accountInputCls}
-            style={accountInputStyle}
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="din@email.dk"
-            autoComplete="email"
-          />
-        </div>
-        <div>
-          <label className={accountLabelCls} style={{ color: WL.textSoft }}>Adgangskode</label>
-          <input
-            className={accountInputCls}
-            style={accountInputStyle}
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="••••••••"
-            autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-          />
-        </div>
-
-        {error && (
+      <div className="w-full min-w-0">
+        <div className="mb-6">
           <div
-            className="text-center text-xs px-3 py-2 rounded-xl"
-            style={{ background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.2)', color: '#b91c1c' }}
-          >
-            {error}
+            className="h-1 w-14 rounded-full mb-4"
+            style={{ background: `linear-gradient(90deg, ${coin.color}, ${WL.gold})` }}
+          />
+          <p className="wl-eyebrow mb-2">WeeLeaf</p>
+          <h2 className="wl-display text-3xl leading-tight" style={{ color: WL.text }}>
+            {copy.heading}
+          </h2>
+          <p className="text-sm mt-2 leading-relaxed" style={{ color: WL.textMuted }}>
+            {copy.text}
+          </p>
+        </div>
+
+        {mode !== 'forgot' && mode !== 'reset' && (
+          <div className="rounded-2xl p-1 mb-5" style={airTileStyle}>
+            <div className="flex gap-1">
+              {[
+                { key: 'login', label: 'Log ind' },
+                { key: 'register', label: 'Opret konto' },
+              ].map(({ key, label }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => goMode(key)}
+                  className="flex-1 py-2.5 rounded-xl text-xs font-semibold transition-all"
+                  style={{
+                    background: mode === key ? WL.green : 'transparent',
+                    color: mode === key ? '#fff' : WL.textMuted,
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full py-3.5 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-50"
-          style={{
-            background: `linear-gradient(135deg, ${WL.greenBright}, #4ade80)`,
-            boxShadow: '0 6px 20px rgba(61,158,95,0.3)',
-          }}
-        >
-          {loading ? 'Vent…' : mode === 'login' ? 'Log ind →' : 'Opret konto →'}
-        </button>
-      </form>
+        <form onSubmit={submit} className="space-y-4">
+          {mode === 'register' && (
+            <div>
+              <label className={accountLabelCls} style={{ color: WL.textSoft }}>Navn</label>
+              <input
+                className={accountInputCls}
+                style={accountInputStyle}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Dit fulde navn"
+                autoComplete="name"
+              />
+            </div>
+          )}
+          {mode !== 'reset' && (
+            <div>
+              <label className={accountLabelCls} style={{ color: WL.textSoft }}>E-mail</label>
+              <input
+                ref={emailRef}
+                className={accountInputCls}
+                style={accountInputStyle}
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="din@email.dk"
+                autoComplete="email"
+                required
+              />
+            </div>
+          )}
+          {(mode === 'login' || mode === 'register' || mode === 'reset') && (
+            <div>
+              <label className={accountLabelCls} style={{ color: WL.textSoft }}>
+                {mode === 'reset' ? 'Ny adgangskode' : 'Adgangskode'}
+              </label>
+              <input
+                className={accountInputCls}
+                style={accountInputStyle}
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                required
+              />
+            </div>
+          )}
+          {mode === 'reset' && (
+            <div>
+              <label className={accountLabelCls} style={{ color: WL.textSoft }}>Gentag adgangskode</label>
+              <input
+                className={accountInputCls}
+                style={accountInputStyle}
+                type="password"
+                value={password2}
+                onChange={(e) => setPassword2(e.target.value)}
+                placeholder="••••••••"
+                autoComplete="new-password"
+                required
+              />
+            </div>
+          )}
+
+          {mode === 'login' && (
+            <div className="text-right -mt-1">
+              <button
+                type="button"
+                onClick={() => goMode('forgot')}
+                className="text-xs font-medium"
+                style={{ color: WL.green }}
+              >
+                Glemt adgangskode?
+              </button>
+            </div>
+          )}
+
+          {info && (
+            <div
+              className="text-center text-xs px-3 py-2 rounded-xl"
+              style={{ background: 'rgba(61,158,95,0.1)', border: `1px solid ${WL.greenBright}`, color: WL.green }}
+            >
+              {info}
+            </div>
+          )}
+          {error && (
+            <div
+              className="text-center text-xs px-3 py-2 rounded-xl"
+              style={{ background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.2)', color: '#b91c1c' }}
+            >
+              {error}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-3.5 rounded-full text-sm font-bold text-white transition-all disabled:opacity-50"
+            style={primaryBtnStyle}
+          >
+            {loading
+              ? 'Vent…'
+              : mode === 'login'
+                ? 'Log ind'
+                : mode === 'register'
+                  ? 'Opret konto'
+                  : mode === 'forgot'
+                    ? 'Send link'
+                    : 'Gem ny adgangskode'}
+          </button>
+        </form>
+
+        {(mode === 'forgot' || mode === 'reset') && (
+          <button
+            type="button"
+            onClick={() => goMode('login')}
+            className="mt-4 text-xs font-medium"
+            style={{ color: WL.textMuted }}
+          >
+            Tilbage til login
+          </button>
+        )}
+      </div>
     </div>
   )
 }
@@ -414,7 +527,7 @@ function UserBlogAdmin({ coin, currentUser }) {
     return (
       <div className="space-y-4">
         <button type="button" onClick={() => setDraft(null)} className="text-xs" style={{ color: WL.textMuted }}>
-          ← Tilbage
+          Tilbage
         </button>
         <h3 className="text-base font-semibold" style={{ color: WL.text }}>{isNew ? 'Nyt indlæg' : 'Rediger indlæg'}</h3>
         <input className={accountInputCls} style={accountInputStyle} value={draft.title} onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))} placeholder="Titel" />
@@ -436,12 +549,11 @@ function UserBlogAdmin({ coin, currentUser }) {
   return (
     <div className="space-y-4">
       <p className="text-xs leading-relaxed" style={{ color: WL.textMuted }}>
-        Dine indlæg vises i Community-noden med det samme.
+        Primær skrivning sker i Community-noden. Her kan du se og redigere dine egne indlæg.
       </p>
       {myPosts.length === 0 && (
         <div className="text-center py-10 rounded-2xl" style={accountCardStyle}>
-          <span className="text-3xl opacity-40 block mb-2">📝</span>
-          <p className="text-xs" style={{ color: WL.textSoft }}>Ingen indlæg endnu</p>
+          <p className="wl-display text-lg" style={{ color: WL.textSoft }}>Ingen indlæg endnu</p>
         </div>
       )}
       {myPosts.map((post) => (
@@ -452,7 +564,7 @@ function UserBlogAdmin({ coin, currentUser }) {
               {post.date ? new Date(post.date).toLocaleDateString('da-DK') : ''}
             </div>
           </div>
-          <button type="button" onClick={() => openEdit(post)} style={{ color: WL.textMuted }}>✏</button>
+          <button type="button" onClick={() => openEdit(post)} className="text-xs" style={{ color: WL.textMuted }}>Rediger</button>
           <button type="button" onClick={() => { if (window.confirm('Slet indlæg?')) deleteBlogPost(post.id) }} style={{ color: WL.textSoft }}>×</button>
         </div>
       ))}
@@ -499,11 +611,11 @@ function UserShopAdmin({ coin, currentUser }) {
   if (draft) {
     return (
       <div className="space-y-4">
-        <button type="button" onClick={() => setDraft(null)} className="text-xs" style={{ color: WL.textMuted }}>← Tilbage</button>
+        <button type="button" onClick={() => setDraft(null)} className="text-xs" style={{ color: WL.textMuted }}>Tilbage</button>
         <h3 className="text-base font-semibold" style={{ color: WL.text }}>Foreslå produkt</h3>
         <select className={accountInputCls} style={accountInputStyle} value={draft.categoryId} onChange={(e) => setDraft((d) => ({ ...d, categoryId: e.target.value }))}>
           {shopCategories.map((cat) => (
-            <option key={cat.id} value={cat.id}>{cat.icon} {cat.label}</option>
+            <option key={cat.id} value={cat.id}>{cat.label}</option>
           ))}
         </select>
         <input className={accountInputCls} style={accountInputStyle} value={draft.name} onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} placeholder="Produktnavn *" />
@@ -514,7 +626,7 @@ function UserShopAdmin({ coin, currentUser }) {
         </div>
         {error && <p className="text-xs text-center" style={{ color: '#b91c1c' }}>{error}</p>}
         <button type="button" onClick={handleSubmit} disabled={!draft.name?.trim()} className="w-full py-3 rounded-xl text-sm font-semibold text-white disabled:opacity-40" style={{ background: WL.greenBright }}>
-          Send til godkendelse →
+          Send til godkendelse
         </button>
       </div>
     )
@@ -601,9 +713,9 @@ function UserDashboard({ coin, currentUser }) {
       <div className="pb-3 flex-shrink-0">
         <TabBar
           tabs={[
-            { key: 'blog', label: 'Indlæg', icon: '📝' },
-            { key: 'shop', label: 'Shop', icon: '🛍️' },
-            { key: 'profile', label: 'Profil', icon: '👤' },
+            { key: 'blog', label: 'Indlæg' },
+            { key: 'shop', label: 'Shop' },
+            { key: 'profile', label: 'Profil' },
           ]}
           active={activeTab}
           onChange={setActiveTab}
@@ -629,7 +741,7 @@ function UserDashboard({ coin, currentUser }) {
               ))}
             </div>
             <p className="text-[10px] leading-relaxed px-1" style={{ color: WL.textSoft }}>
-              Din konto er gemt sikkert på serveren. Community-indlæg udgives med det samme. Shop-produkter kræver admin-godkendelse.
+              Din konto er gemt sikkert på serveren. Nye indlæg skrives i Community. Shop-produkter kræver admin-godkendelse.
             </p>
           </div>
         )}
@@ -674,30 +786,32 @@ export default function MemberModal({ coin, onClose }) {
       title={currentUser ? `Hej, ${currentUser.name.split(' ')[0]}` : 'Log ind'}
       tagline={coin.subtitle || 'Member Login'}
       onClose={onClose}
-      contentClassName={isAdminPanel ? 'max-w-6xl' : 'max-w-lg'}
+      headerLayout={currentUser ? 'pill' : 'none'}
+      contentAlign={currentUser ? 'start' : 'center'}
+      contentClassName={isAdminPanel ? 'max-w-6xl' : currentUser ? 'max-w-lg' : 'max-w-3xl'}
     >
-      <div
-        className="rounded-2xl px-5 md:px-8 py-6 md:py-8 min-h-[min(70vh,640px)] flex flex-col"
-        style={{
-          ...(isAdminPanel ? adminShellStyle : accountCardStyle),
-          height: isAdminPanel ? 'min(78vh, 800px)' : undefined,
-        }}
-      >
-        {!currentUser ? (
+      {!currentUser ? (
+        <div className="w-full rounded-3xl px-5 md:px-8 py-8 md:py-10" style={airGlassStyle}>
           <AuthGate coin={coin} onSuccess={onLoginSuccess} />
-        ) : (
-          <>
-                <RootTabBar active={rootPanel} onChange={setRootPanel} isAdmin={isAdmin} />
-            <div className="flex-1 min-h-0 overflow-hidden">
-              {rootPanel === 'admin' && isAdmin ? (
-                <AdminDashboard />
-              ) : (
-                <UserDashboard coin={coin} currentUser={currentUser} />
-              )}
-            </div>
-          </>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div
+          className="rounded-3xl px-5 md:px-8 py-6 md:py-8 min-h-[min(70vh,640px)] flex flex-col"
+          style={{
+            ...(isAdminPanel ? adminShellStyle : accountCardStyle),
+            height: isAdminPanel ? 'min(78vh, 800px)' : undefined,
+          }}
+        >
+          <RootTabBar active={rootPanel} onChange={setRootPanel} isAdmin={isAdmin} />
+          <div className="flex-1 min-h-0 overflow-hidden">
+            {rootPanel === 'admin' && isAdmin ? (
+              <AdminDashboard />
+            ) : (
+              <UserDashboard coin={coin} currentUser={currentUser} />
+            )}
+          </div>
+        </div>
+      )}
     </FullscreenShell>
   )
 }

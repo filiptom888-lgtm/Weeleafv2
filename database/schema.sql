@@ -47,6 +47,21 @@ CREATE TABLE IF NOT EXISTS sessions (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------
+-- Password reset tokens (forgot-password emails)
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS password_resets (
+  id         VARCHAR(64)  NOT NULL PRIMARY KEY,
+  user_id    VARCHAR(64)  NOT NULL,
+  token_hash CHAR(64)     NOT NULL,
+  expires_at DATETIME     NOT NULL,
+  used_at    DATETIME     NULL,
+  created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_pr_token (token_hash),
+  INDEX idx_pr_user (user_id),
+  CONSTRAINT fk_pr_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------------------------------
 -- Community blog posts (Community feed + Member + Admin blog tab)
 -- -----------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS posts (
@@ -129,6 +144,42 @@ CREATE TABLE IF NOT EXISTS site_config (
   config_key  VARCHAR(64)  NOT NULL PRIMARY KEY,
   config_json LONGTEXT     NOT NULL,
   updated_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- -----------------------------------------------------------------------------
+-- 1:1 DMs (Community Messages tab)
+-- pair_key is sorted userIdA|userIdB so each pair has one thread
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS conversations (
+  id         VARCHAR(64)  NOT NULL PRIMARY KEY,
+  pair_key   VARCHAR(129) NOT NULL,
+  created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_conversations_pair (pair_key),
+  INDEX idx_conversations_updated (updated_at DESC)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS conversation_members (
+  conversation_id VARCHAR(64) NOT NULL,
+  user_id         VARCHAR(64) NOT NULL,
+  last_read_at    DATETIME    NULL,
+  PRIMARY KEY (conversation_id, user_id),
+  INDEX idx_cm_user (user_id),
+  CONSTRAINT fk_cm_conversation FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE,
+  CONSTRAINT fk_cm_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS messages (
+  id              VARCHAR(64) NOT NULL PRIMARY KEY,
+  conversation_id VARCHAR(64) NOT NULL,
+  sender_id       VARCHAR(64) NOT NULL,
+  body            TEXT        NOT NULL,
+  created_at      DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  read_at         DATETIME    NULL,
+  INDEX idx_messages_conv (conversation_id, created_at),
+  INDEX idx_messages_sender (sender_id, created_at),
+  CONSTRAINT fk_messages_conversation FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE,
+  CONSTRAINT fk_messages_sender FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 SET FOREIGN_KEY_CHECKS = 1;

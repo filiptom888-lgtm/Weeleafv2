@@ -11,4 +11,7 @@ return [
     'admin_password' => '1234',
     'install_key' => 'change-me-before-install',
     'cors_origin' => '*',
+    'mail_from' => 'WeeLeaf <wl@weeleaf.com>',
+    'mail_reply' => 'wl@weeleaf.com',
+    'public_url' => 'https://weeleaf.com',
 ];

@@ -53,7 +53,7 @@ def main() -> int:
     with SCPClient(client.get_transport()) as scp:
         scp.put(str(PROJECT / "dist" / "index.html"), f"{remote_base}/index.html")
         scp.put(str(PROJECT / "dist" / "assets"), remote_base, recursive=True)
-        for extra in (".htaccess", "favicon.svg", "leafy.gif"):
+        for extra in (".htaccess", "favicon.svg", "emblem.svg", "leafy.gif", "weeleaf-leaf.png"):
             path = PROJECT / "dist" / extra
             if path.is_file():
                 scp.put(str(path), f"{remote_base}/{extra}")
@@ -78,6 +78,9 @@ return [
     'admin_password' => '1234',
     'install_key' => '{INSTALL_KEY}',
     'cors_origin' => '*',
+    'mail_from' => 'WeeLeaf <wl@weeleaf.com>',
+    'mail_reply' => 'wl@weeleaf.com',
+    'public_url' => 'https://weeleaf.com',
 ];
 """
     domain_root = f"/home/{USER}/domains/weeleaf.com"
@@ -122,6 +125,12 @@ return [
     print("==> Migrate coin images to static files")
     _, stdout, stderr = client.exec_command(
         f"cd {remote_base}/api && php restore-coin-images-cli.php 2>&1"
+    )
+    print(stdout.read().decode() or stderr.read().decode())
+
+    print("==> Ensure conversation tables (DMs)")
+    _, stdout, stderr = client.exec_command(
+        f"cd {remote_base}/api && php ensure-conversations-cli.php 2>&1"
     )
     print(stdout.read().decode() or stderr.read().decode())
 

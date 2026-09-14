@@ -144,6 +144,25 @@ const useStore = create((set, get) => ({
     return { ok: true }
   },
 
+  requestPasswordReset: async (email) => {
+    const res = await api.forgotPassword(email?.trim())
+    if (!res.ok) return res
+    return { ok: true, message: res.message || 'Hvis e-mailen findes, sender vi et link.' }
+  },
+
+  resetPasswordWithToken: async ({ token, password }) => {
+    const res = await api.resetPassword(token, password)
+    if (!res.ok) return res
+    setToken(res.token)
+    saveCachedUser(res.user)
+    set({ currentUser: res.user })
+    const subs = await api.fetchSubmissions()
+    if (subs.ok && subs.pendingShopSubmissions) {
+      set({ pendingShopSubmissions: subs.pendingShopSubmissions })
+    }
+    return { ok: true }
+  },
+
   adminLogin: async (password) => {
     const res = await api.adminLogin(password?.trim())
     if (!res.ok) return res
@@ -209,11 +228,30 @@ const useStore = create((set, get) => ({
     return api.saveCoins(coins)
   },
 
-  addCoin: (coin) => {
+  persistLiveConfig: async () => {
+    const { coins, shopCategories, donationConfig, stats } = get()
+    const coinsRes = await api.saveCoins(coins)
+    if (!coinsRes.ok) return { ok: false, error: coinsRes.error || 'Kunne ikke gemme noder.' }
+    const shopRes = await api.saveShop(shopCategories)
+    if (!shopRes.ok) return { ok: false, error: shopRes.error || 'Kunne ikke gemme shop.' }
+    const donRes = await api.saveDonation(donationConfig)
+    if (!donRes.ok) return { ok: false, error: donRes.error || 'Kunne ikke gemme donation.' }
+    const statsRes = await api.saveStats(stats)
+    if (!statsRes.ok) return { ok: false, error: statsRes.error || 'Kunne ikke gemme tæller.' }
+    if (Array.isArray(coinsRes.coins) && coinsRes.coins.length > 0) {
+      set({ coins: coinsRes.coins })
+    }
+    return { ok: true }
+  },
+
+  addCoin: async (coin) => {
     const updated = redistributeAngles([...get().coins, coin])
     set({ coins: updated })
-    if (get().apiReady) api.saveCoins(updated)
-    return updated[updated.length - 1]
+    const created = updated[updated.length - 1]
+    if (!get().apiReady) return created
+    const res = await api.saveCoins(updated)
+    if (!res.ok) return { ...created, saveError: res.error }
+    return created
   },
 
   syncSystemCoins: () => {
@@ -246,20 +284,27 @@ const useStore = create((set, get) => ({
     }
   },
 
-  updateCoin: (id, patch) => {
+  updateCoin: async (id, patch) => {
     const updated = get().coins.map((c) => (c.id === id ? { ...c, ...patch } : c))
     set({ coins: updated })
     if (patch.imageUrl) preloadTexture(patch.imageUrl)
     if (get().activeCoin?.id === id) {
       set({ activeCoin: updated.find((c) => c.id === id) })
     }
-    if (get().apiReady) api.saveCoins(updated)
+    if (!get().apiReady) return { ok: false, error: 'API er ikke forbundet.' }
+    const res = await api.saveCoins(updated)
+    if (!res.ok) return res
+    if (Array.isArray(res.coins) && res.coins.length > 0) {
+      set({ coins: res.coins })
+    }
+    return { ok: true }
   },
 
-  deleteCoin: (id) => {
+  deleteCoin: async (id) => {
     const updated = redistributeAngles(get().coins.filter((c) => c.id !== id))
     set({ coins: updated, activeCoin: null, isModalOpen: false })
-    if (get().apiReady) api.saveCoins(updated)
+    if (!get().apiReady) return { ok: false, error: 'API er ikke forbundet.' }
+    return api.saveCoins(updated)
   },
 
   resetCoins: async () => {

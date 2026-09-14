@@ -15,7 +15,11 @@ try {
     match (true) {
         $uri === '/health' && $method === 'GET' => wl_ok(['status' => 'ok']),
 
-        $uri === '/config' && $method === 'GET' => wl_ok(['data' => wl_full_config_payload()]),
+        $uri === '/config' && $method === 'GET' => (function () {
+            wl_migrate_conversations();
+            wl_migrate_password_resets();
+            wl_ok(['data' => wl_full_config_payload()]);
+        })(),
 
         $uri === '/config/coins' && $method === 'PUT' => (function () {
             wl_require_auth(true);
@@ -304,7 +308,91 @@ try {
             ]);
             $session = wl_create_session($id);
             $user = wl_user_payload(['id' => $id, 'name' => $name, 'email' => $email, 'role' => 'member', 'created_at' => gmdate('Y-m-d H:i:s')]);
+            try {
+                wl_send_welcome_email($email, $name);
+            } catch (Throwable $e) {
+                // Registration still succeeds if mail is unavailable.
+            }
             wl_ok(['user' => $user, 'token' => $session['token']], 201);
+        })(),
+
+        $uri === '/auth/forgot-password' && $method === 'POST' => (function () {
+            wl_migrate_password_resets();
+            $body = wl_json_input();
+            $email = strtolower(trim($body['email'] ?? ''));
+            $generic = 'Hvis e-mailen findes, sender vi et link til at nulstille adgangskoden.';
+            if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                wl_ok(['message' => $generic]);
+            }
+            $stmt = wl_pdo()->prepare('SELECT id, email FROM users WHERE email = :email LIMIT 1');
+            $stmt->execute(['email' => $email]);
+            $row = $stmt->fetch();
+            if ($row) {
+                wl_pdo()->prepare(
+                    'UPDATE password_resets SET used_at = NOW() WHERE user_id = :uid AND used_at IS NULL'
+                )->execute(['uid' => $row['id']]);
+                $token = bin2hex(random_bytes(32));
+                wl_pdo()->prepare(
+                    'INSERT INTO password_resets (id, user_id, token_hash, expires_at)
+                     VALUES (:id, :uid, :hash, DATE_ADD(NOW(), INTERVAL 2 HOUR))'
+                )->execute([
+                    'id' => wl_new_id('pr'),
+                    'uid' => $row['id'],
+                    'hash' => hash('sha256', $token),
+                ]);
+                try {
+                    wl_send_reset_email($row['email'], $token);
+                } catch (Throwable $e) {
+                    // Still return generic success.
+                }
+            }
+            wl_ok(['message' => $generic]);
+        })(),
+
+        $uri === '/auth/reset-password' && $method === 'POST' => (function () {
+            wl_migrate_password_resets();
+            $body = wl_json_input();
+            $token = trim($body['token'] ?? '');
+            $password = trim($body['password'] ?? '');
+            if ($token === '' || strlen($token) < 16) {
+                wl_error('Ugyldigt eller udløbet link.');
+            }
+            if (strlen($password) < 6) {
+                wl_error('Adgangskoden skal være mindst 6 tegn.');
+            }
+            $stmt = wl_pdo()->prepare(
+                'SELECT id, user_id FROM password_resets
+                 WHERE token_hash = :hash AND used_at IS NULL AND expires_at > NOW()
+                 LIMIT 1'
+            );
+            $stmt->execute(['hash' => hash('sha256', $token)]);
+            $row = $stmt->fetch();
+            if (!$row) {
+                wl_error('Ugyldigt eller udløbet link.');
+            }
+            wl_pdo()->prepare('UPDATE users SET password_hash = :hash WHERE id = :id')->execute([
+                'hash' => password_hash($password, PASSWORD_DEFAULT),
+                'id' => $row['user_id'],
+            ]);
+            wl_pdo()->prepare('UPDATE password_resets SET used_at = NOW() WHERE id = :id')->execute([
+                'id' => $row['id'],
+            ]);
+            wl_pdo()->prepare(
+                'UPDATE password_resets SET used_at = NOW() WHERE user_id = :uid AND used_at IS NULL'
+            )->execute(['uid' => $row['user_id']]);
+            wl_pdo()->prepare('DELETE FROM sessions WHERE user_id = :uid')->execute(['uid' => $row['user_id']]);
+            $userStmt = wl_pdo()->prepare('SELECT * FROM users WHERE id = :id LIMIT 1');
+            $userStmt->execute(['id' => $row['user_id']]);
+            $user = $userStmt->fetch();
+            if (!$user) {
+                wl_error('Bruger ikke fundet.');
+            }
+            try {
+                wl_send_password_changed_email($user['email']);
+            } catch (Throwable $e) {
+            }
+            $session = wl_create_session($row['user_id']);
+            wl_ok(['user' => wl_user_payload($user), 'token' => $session['token']]);
         })(),
 
         $uri === '/auth/login' && $method === 'POST' => (function () {
@@ -414,6 +502,23 @@ try {
             wl_ok(['users' => $users]);
         })(),
 
+        preg_match('#^/users/([^/]+)$#', $uri, $m) && $method === 'GET' => (function () use ($m) {
+            wl_migrate_user_avatars();
+            $userId = $m[1];
+            $stmt = wl_pdo()->prepare(
+                'SELECT id, name, avatar_id, avatar_url FROM users WHERE id = :id LIMIT 1'
+            );
+            $stmt->execute(['id' => $userId]);
+            $row = $stmt->fetch();
+            if (!$row) {
+                wl_error('Bruger ikke fundet.', 404);
+            }
+            wl_ok([
+                'user' => wl_public_user_payload($row),
+                'posts' => wl_fetch_posts_for_author($userId),
+            ]);
+        })(),
+
         preg_match('#^/users/([^/]+)/role$#', $uri, $m) && $method === 'PUT' => (function () use ($m) {
             $admin = wl_require_auth(true);
             $userId = $m[1];
@@ -469,6 +574,105 @@ try {
             }
             wl_pdo()->prepare('DELETE FROM users WHERE id = :id')->execute(['id' => $userId]);
             wl_ok();
+        })(),
+
+        $uri === '/conversations' && $method === 'GET' => (function () {
+            $user = wl_require_auth();
+            wl_migrate_conversations();
+            wl_ok(['conversations' => wl_list_conversations($user['id'])]);
+        })(),
+
+        $uri === '/conversations' && $method === 'POST' => (function () {
+            $user = wl_require_auth();
+            wl_migrate_conversations();
+            $body = wl_json_input();
+            $otherId = trim((string) ($body['userId'] ?? ''));
+            if ($otherId === '') {
+                wl_error('userId påkrævet.');
+            }
+            $conversation = wl_find_or_create_conversation($user['id'], $otherId);
+            wl_ok(['conversation' => $conversation], 201);
+        })(),
+
+        preg_match('#^/conversations/([^/]+)/messages$#', $uri, $m) && $method === 'GET' => (function () use ($m) {
+            $user = wl_require_auth();
+            $conversationId = $m[1];
+            wl_require_conversation_member($conversationId, $user['id']);
+            $after = trim((string) ($_GET['after'] ?? ''));
+            $params = ['cid' => $conversationId];
+            if ($after !== '') {
+                $ts = strtotime($after);
+                if ($ts === false) {
+                    wl_error('after skal være et gyldigt tidspunkt.');
+                }
+                $stmt = wl_pdo()->prepare(
+                    'SELECT id, conversation_id, sender_id, body, created_at, read_at
+                     FROM messages WHERE conversation_id = :cid AND created_at > :after
+                     ORDER BY created_at ASC, id ASC LIMIT 120'
+                );
+                $params['after'] = date('Y-m-d H:i:s', $ts);
+                $stmt->execute($params);
+                $messages = array_map('wl_message_payload', $stmt->fetchAll());
+            } else {
+                $stmt = wl_pdo()->prepare(
+                    'SELECT id, conversation_id, sender_id, body, created_at, read_at
+                     FROM messages WHERE conversation_id = :cid
+                     ORDER BY created_at DESC, id DESC LIMIT 120'
+                );
+                $stmt->execute($params);
+                $rows = array_reverse($stmt->fetchAll());
+                $messages = array_map('wl_message_payload', $rows);
+            }
+            wl_ok(['messages' => $messages]);
+        })(),
+
+        preg_match('#^/conversations/([^/]+)/messages$#', $uri, $m) && $method === 'POST' => (function () use ($m) {
+            $user = wl_require_auth();
+            $conversationId = $m[1];
+            wl_require_conversation_member($conversationId, $user['id']);
+            wl_rate_limit_messages($user['id']);
+            $input = wl_json_input();
+            $text = trim((string) ($input['body'] ?? ''));
+            if ($text === '') {
+                wl_error('Besked må ikke være tom.');
+            }
+            if (mb_strlen($text) > 2000) {
+                wl_error('Besked er for lang (max 2000 tegn).');
+            }
+            $id = wl_new_id('msg');
+            wl_pdo()->prepare(
+                'INSERT INTO messages (id, conversation_id, sender_id, body)
+                 VALUES (:id, :cid, :sid, :body)'
+            )->execute([
+                'id' => $id,
+                'cid' => $conversationId,
+                'sid' => $user['id'],
+                'body' => $text,
+            ]);
+            wl_pdo()->prepare(
+                'UPDATE conversations SET updated_at = NOW() WHERE id = :id'
+            )->execute(['id' => $conversationId]);
+            $stmt = wl_pdo()->prepare(
+                'SELECT id, conversation_id, sender_id, body, created_at, read_at
+                 FROM messages WHERE id = :id LIMIT 1'
+            );
+            $stmt->execute(['id' => $id]);
+            wl_ok(['message' => wl_message_payload($stmt->fetch())], 201);
+        })(),
+
+        preg_match('#^/conversations/([^/]+)/read$#', $uri, $m) && $method === 'POST' => (function () use ($m) {
+            $user = wl_require_auth();
+            $conversationId = $m[1];
+            wl_require_conversation_member($conversationId, $user['id']);
+            wl_pdo()->prepare(
+                'UPDATE conversation_members SET last_read_at = NOW()
+                 WHERE conversation_id = :cid AND user_id = :uid'
+            )->execute(['cid' => $conversationId, 'uid' => $user['id']]);
+            wl_pdo()->prepare(
+                'UPDATE messages SET read_at = NOW()
+                 WHERE conversation_id = :cid AND sender_id <> :uid AND read_at IS NULL'
+            )->execute(['cid' => $conversationId, 'uid' => $user['id']]);
+            wl_ok(['conversation' => wl_conversation_payload($conversationId, $user['id'])]);
         })(),
 
         default => wl_error('Ikke fundet: ' . $uri, 404),

@@ -61,7 +61,7 @@ export default function LeafyAssistant() {
             color: '#86efac',
           }}
         >
-          Right-click to chat with Leafy ✨
+          Right-click to chat with Leafy
         </div>
       )}
     </div>

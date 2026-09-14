@@ -29,7 +29,7 @@ function LoadingScreen() {
             <span className="text-green-400 font-bold text-xs tracking-widest">WL</span>
           </div>
         </div>
-        <div className="text-white font-bold text-2xl tracking-[0.3em]">WEELEAF</div>
+        <div className="text-white font-display text-2xl tracking-[0.18em]">WeeLeaf</div>
       </div>
     </div>
   )
@@ -43,6 +43,10 @@ export default function App() {
   useEffect(() => {
     useStore.getState().loadFromApi().then(() => {
       deferNonCritical(() => preloadCoinImages(useStore.getState().coins))
+      const reset = new URLSearchParams(window.location.search).get('wl_reset')
+      if (!reset) return
+      const member = useStore.getState().coins.find((c) => c.id === 'member')
+      if (member) useStore.getState().setActiveCoin(member)
     })
   }, [])
 

@@ -5,6 +5,8 @@ import * as THREE from 'three'
 import { gsap } from 'gsap'
 
 import LifeTree from './LifeTree'
+import { USE_TREE } from './WeeleafEmblem'
+import CenterLeafy from './CenterLeafy'
 import OrbitingCoins from './OrbitingCoins'
 
 import { orbitState } from '../../data/orbitState'
@@ -28,8 +30,6 @@ function Lighting({ shadows }) {
       />
       {/* Warm fill from front */}
       <directionalLight position={[-5, 5, 8]} intensity={0.4} color="#ffe0a0" />
-      {/* Tree glow point light */}
-      <pointLight position={[0, 3, 0]} intensity={1.8} color="#4ade80" distance={12} decay={2} />
     </>
   )
 }
@@ -464,7 +464,7 @@ function SceneContents({ shadows }) {
   return (
     <>
       <Lighting shadows={shadows} />
-      <LifeTree />
+      {USE_TREE ? <LifeTree /> : <CenterLeafy />}
       <OrbitingCoins />
     </>
   )

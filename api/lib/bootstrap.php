@@ -17,6 +17,9 @@ function wl_config(): array
         'admin_password' => '1234',
         'install_key' => 'change-me-before-install',
         'cors_origin' => '*',
+        'mail_from' => 'WeeLeaf <wl@weeleaf.com>',
+        'mail_reply' => 'wl@weeleaf.com',
+        'public_url' => 'https://weeleaf.com',
     ];
 
     // Survives Hostinger Git deploy (lives outside public_html)
@@ -121,6 +124,7 @@ function wl_require_auth(bool $adminOnly = false): array
 
     $hash = hash('sha256', $token);
     wl_migrate_user_avatars();
+    wl_migrate_conversations();
     $stmt = wl_pdo()->prepare(
         'SELECT s.id AS session_id, s.expires_at, u.id, u.name, u.email, u.role, u.avatar_id, u.avatar_url, u.created_at
          FROM sessions s
@@ -419,6 +423,240 @@ function wl_fetch_submissions(?string $userId = null): array
     return $items;
 }
 
+function wl_public_user_payload(array $row): array
+{
+    $avatarId = $row['avatar_id'] ?? $row['avatarId'] ?? null;
+    $avatarUrl = $row['avatar_url'] ?? $row['avatarUrl'] ?? null;
+    return [
+        'id' => $row['id'],
+        'name' => $row['name'],
+        'avatarId' => $avatarId !== null && $avatarId !== '' ? (string) $avatarId : null,
+        'avatarUrl' => $avatarUrl !== null && $avatarUrl !== '' ? (string) $avatarUrl : null,
+    ];
+}
+
+function wl_fetch_posts_for_author(string $userId): array
+{
+    $all = wl_fetch_posts();
+    return array_values(array_filter($all, static fn ($p) => ($p['authorId'] ?? '') === $userId));
+}
+
+function wl_migrate_conversations(): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+    try {
+        $pdo = wl_pdo();
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS conversations (
+              id         VARCHAR(64)  NOT NULL PRIMARY KEY,
+              pair_key   VARCHAR(129) NOT NULL,
+              created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              updated_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              UNIQUE KEY uq_conversations_pair (pair_key),
+              INDEX idx_conversations_updated (updated_at DESC)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        );
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS conversation_members (
+              conversation_id VARCHAR(64) NOT NULL,
+              user_id         VARCHAR(64) NOT NULL,
+              last_read_at    DATETIME    NULL,
+              PRIMARY KEY (conversation_id, user_id),
+              INDEX idx_cm_user (user_id),
+              CONSTRAINT fk_cm_conversation FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE,
+              CONSTRAINT fk_cm_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        );
+        $pdo->exec(
+            "CREATE TABLE IF NOT EXISTS messages (
+              id              VARCHAR(64) NOT NULL PRIMARY KEY,
+              conversation_id VARCHAR(64) NOT NULL,
+              sender_id       VARCHAR(64) NOT NULL,
+              body            TEXT        NOT NULL,
+              created_at      DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              read_at         DATETIME    NULL,
+              INDEX idx_messages_conv (conversation_id, created_at),
+              INDEX idx_messages_sender (sender_id, created_at),
+              CONSTRAINT fk_messages_conversation FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE,
+              CONSTRAINT fk_messages_sender FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        );
+    } catch (Throwable $e) {
+        // Tables may already exist on some hosts.
+    }
+}
+
+function wl_pair_key(string $a, string $b): string
+{
+    $ids = [$a, $b];
+    sort($ids, SORT_STRING);
+    return $ids[0] . '|' . $ids[1];
+}
+
+function wl_require_conversation_member(string $conversationId, string $userId): array
+{
+    wl_migrate_conversations();
+    $stmt = wl_pdo()->prepare(
+        'SELECT conversation_id, user_id, last_read_at
+         FROM conversation_members
+         WHERE conversation_id = :cid AND user_id = :uid
+         LIMIT 1'
+    );
+    $stmt->execute(['cid' => $conversationId, 'uid' => $userId]);
+    $row = $stmt->fetch();
+    if (!$row) {
+        wl_error('Samtale ikke fundet.', 404);
+    }
+    return $row;
+}
+
+function wl_message_payload(array $row): array
+{
+    return [
+        'id' => $row['id'],
+        'conversationId' => $row['conversation_id'],
+        'senderId' => $row['sender_id'],
+        'body' => $row['body'],
+        'createdAt' => gmdate('c', strtotime($row['created_at'])),
+        'readAt' => !empty($row['read_at']) ? gmdate('c', strtotime($row['read_at'])) : null,
+    ];
+}
+
+function wl_conversation_payload(string $conversationId, string $viewerId): ?array
+{
+    wl_migrate_conversations();
+    $pdo = wl_pdo();
+    $conv = $pdo->prepare('SELECT id, created_at, updated_at FROM conversations WHERE id = :id LIMIT 1');
+    $conv->execute(['id' => $conversationId]);
+    $row = $conv->fetch();
+    if (!$row) {
+        return null;
+    }
+
+    $otherStmt = $pdo->prepare(
+        'SELECT u.id, u.name, u.avatar_id, u.avatar_url
+         FROM conversation_members cm
+         JOIN users u ON u.id = cm.user_id
+         WHERE cm.conversation_id = :cid AND cm.user_id <> :me
+         LIMIT 1'
+    );
+    $otherStmt->execute(['cid' => $conversationId, 'me' => $viewerId]);
+    $other = $otherStmt->fetch();
+
+    $lastStmt = $pdo->prepare(
+        'SELECT id, conversation_id, sender_id, body, created_at, read_at
+         FROM messages WHERE conversation_id = :cid
+         ORDER BY created_at DESC, id DESC LIMIT 1'
+    );
+    $lastStmt->execute(['cid' => $conversationId]);
+    $last = $lastStmt->fetch();
+
+    $unreadStmt = $pdo->prepare(
+        'SELECT COUNT(*) FROM messages m
+         JOIN conversation_members me
+           ON me.conversation_id = m.conversation_id AND me.user_id = :me
+         WHERE m.conversation_id = :cid
+           AND m.sender_id <> :me
+           AND (me.last_read_at IS NULL OR m.created_at > me.last_read_at)'
+    );
+    $unreadStmt->execute(['cid' => $conversationId, 'me' => $viewerId]);
+    $unread = (int) $unreadStmt->fetchColumn();
+
+    return [
+        'id' => $row['id'],
+        'createdAt' => gmdate('c', strtotime($row['created_at'])),
+        'updatedAt' => gmdate('c', strtotime($row['updated_at'])),
+        'otherUser' => $other ? wl_public_user_payload($other) : null,
+        'lastMessage' => $last ? wl_message_payload($last) : null,
+        'unreadCount' => $unread,
+    ];
+}
+
+function wl_list_conversations(string $userId): array
+{
+    wl_migrate_conversations();
+    $stmt = wl_pdo()->prepare(
+        'SELECT c.id
+         FROM conversations c
+         JOIN conversation_members me ON me.conversation_id = c.id AND me.user_id = :me
+         ORDER BY c.updated_at DESC'
+    );
+    $stmt->execute(['me' => $userId]);
+    $items = [];
+    foreach ($stmt->fetchAll() as $row) {
+        $payload = wl_conversation_payload($row['id'], $userId);
+        if ($payload) {
+            $items[] = $payload;
+        }
+    }
+    return $items;
+}
+
+function wl_find_or_create_conversation(string $me, string $otherId): array
+{
+    wl_migrate_conversations();
+    if ($me === $otherId) {
+        wl_error('Du kan ikke skrive til dig selv.');
+    }
+    $userStmt = wl_pdo()->prepare('SELECT id FROM users WHERE id = :id LIMIT 1');
+    $userStmt->execute(['id' => $otherId]);
+    if (!$userStmt->fetch()) {
+        wl_error('Bruger ikke fundet.', 404);
+    }
+
+    $pair = wl_pair_key($me, $otherId);
+    $found = wl_pdo()->prepare('SELECT id FROM conversations WHERE pair_key = :k LIMIT 1');
+    $found->execute(['k' => $pair]);
+    $row = $found->fetch();
+    if ($row) {
+        $payload = wl_conversation_payload($row['id'], $me);
+        return $payload ?? ['id' => $row['id']];
+    }
+
+    $id = wl_new_id('conv');
+    $pdo = wl_pdo();
+    $pdo->beginTransaction();
+    try {
+        $pdo->prepare(
+            'INSERT INTO conversations (id, pair_key) VALUES (:id, :pair)'
+        )->execute(['id' => $id, 'pair' => $pair]);
+        $member = $pdo->prepare(
+            'INSERT INTO conversation_members (conversation_id, user_id) VALUES (:cid, :uid)'
+        );
+        $member->execute(['cid' => $id, 'uid' => $me]);
+        $member->execute(['cid' => $id, 'uid' => $otherId]);
+        $pdo->commit();
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+        $retry = wl_pdo()->prepare('SELECT id FROM conversations WHERE pair_key = :k LIMIT 1');
+        $retry->execute(['k' => $pair]);
+        $existing = $retry->fetch();
+        if ($existing) {
+            $payload = wl_conversation_payload($existing['id'], $me);
+            return $payload ?? ['id' => $existing['id']];
+        }
+        throw $e;
+    }
+
+    return wl_conversation_payload($id, $me) ?? ['id' => $id];
+}
+
+function wl_rate_limit_messages(string $userId): void
+{
+    $stmt = wl_pdo()->prepare(
+        'SELECT COUNT(*) FROM messages
+         WHERE sender_id = :id AND created_at >= DATE_SUB(NOW(), INTERVAL 20 SECOND)'
+    );
+    $stmt->execute(['id' => $userId]);
+    if ((int) $stmt->fetchColumn() >= 8) {
+        wl_error('For mange beskeder. Vent et øjeblik.', 429);
+    }
+}
+
 require_once __DIR__ . '/images.php';
 
 function wl_full_config_payload(): array
@@ -431,4 +669,120 @@ function wl_full_config_payload(): array
         'shopCategories' => wl_fetch_shop_categories(),
         'blogPosts' => wl_fetch_posts(),
     ];
+}
+
+function wl_migrate_password_resets(): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+    try {
+        wl_pdo()->exec(
+            "CREATE TABLE IF NOT EXISTS password_resets (
+              id         VARCHAR(64)  NOT NULL PRIMARY KEY,
+              user_id    VARCHAR(64)  NOT NULL,
+              token_hash CHAR(64)     NOT NULL,
+              expires_at DATETIME     NOT NULL,
+              used_at    DATETIME     NULL,
+              created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              INDEX idx_pr_token (token_hash),
+              INDEX idx_pr_user (user_id),
+              CONSTRAINT fk_pr_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        );
+    } catch (Throwable $e) {
+        // Table may already exist.
+    }
+}
+
+function wl_public_origin(): string
+{
+    $cfg = wl_config();
+    if (!empty($cfg['public_url'])) {
+        return rtrim((string) $cfg['public_url'], '/');
+    }
+    $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (string) ($_SERVER['SERVER_PORT'] ?? '') === '443';
+    $host = $_SERVER['HTTP_HOST'] ?? 'weeleaf.com';
+    return ($https ? 'https://' : 'http://') . $host;
+}
+
+function wl_mail(string $to, string $subject, string $htmlBody): bool
+{
+    $cfg = wl_config();
+    $from = (string) ($cfg['mail_from'] ?? 'WeeLeaf <wl@weeleaf.com>');
+    $reply = (string) ($cfg['mail_reply'] ?? 'wl@weeleaf.com');
+    $headers = [
+        'MIME-Version: 1.0',
+        'Content-Type: text/html; charset=UTF-8',
+        'From: ' . $from,
+        'Reply-To: ' . $reply,
+        'X-Mailer: WeeLeaf',
+    ];
+    $encodedSubject = '=?UTF-8?B?' . base64_encode($subject) . '?=';
+    return @mail($to, $encodedSubject, $htmlBody, implode("\r\n", $headers));
+}
+
+function wl_email_wrap(string $title, string $intro, string $buttonLabel = '', string $buttonUrl = ''): string
+{
+    $btn = '';
+    if ($buttonLabel !== '' && $buttonUrl !== '') {
+        $safeUrl = htmlspecialchars($buttonUrl, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $safeLabel = htmlspecialchars($buttonLabel, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $btn = '<p style="margin:28px 0 8px"><a href="' . $safeUrl . '" style="display:inline-block;background:#2d6a42;color:#fff;text-decoration:none;padding:12px 22px;border-radius:999px;font-weight:600">' . $safeLabel . '</a></p>';
+    }
+    $safeTitle = htmlspecialchars($title, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $safeIntro = nl2br(htmlspecialchars($intro, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+    return '<!DOCTYPE html><html><body style="margin:0;background:#f6e7d4;font-family:Segoe UI,Arial,sans-serif;color:#2a2218">'
+        . '<div style="max-width:520px;margin:24px auto;background:#fffbf5;border:1px solid #e8c9a0;border-radius:20px;padding:32px">'
+        . '<p style="letter-spacing:.22em;text-transform:uppercase;font-size:11px;color:#c8904a;margin:0 0 8px">WeeLeaf</p>'
+        . '<h1 style="font-size:22px;margin:0 0 16px">' . $safeTitle . '</h1>'
+        . '<p style="line-height:1.6;margin:0">' . $safeIntro . '</p>'
+        . $btn
+        . '<p style="margin:28px 0 0;font-size:12px;color:#9a8870">Hvis du ikke har bedt om denne mail, kan du bare ignorere den.</p>'
+        . '</div></body></html>';
+}
+
+function wl_send_welcome_email(string $to, string $name): void
+{
+    $first = trim(explode(' ', $name)[0] ?? $name);
+    wl_mail(
+        $to,
+        'Velkommen til WeeLeaf',
+        wl_email_wrap(
+            'Velkommen, ' . ($first !== '' ? $first : 'ven'),
+            "Din WL-konto er oprettet.\n\nDu kan nu logge ind, skrive i fællesskabet og sende beskeder.",
+            'Åbn WeeLeaf',
+            wl_public_origin() . '/'
+        )
+    );
+}
+
+function wl_send_reset_email(string $to, string $token): void
+{
+    $url = wl_public_origin() . '/?wl_reset=' . rawurlencode($token);
+    wl_mail(
+        $to,
+        'Nulstil din WL-adgangskode',
+        wl_email_wrap(
+            'Nulstil adgangskode',
+            "Vi har modtaget en anmodning om at skifte din adgangskode. Linket virker i 2 timer.",
+            'Vælg ny adgangskode',
+            $url
+        )
+    );
+}
+
+function wl_send_password_changed_email(string $to): void
+{
+    wl_mail(
+        $to,
+        'Din WL-adgangskode er skiftet',
+        wl_email_wrap(
+            'Adgangskoden er skiftet',
+            "Din WeeLeaf-adgangskode er blevet opdateret. Hvis det ikke var dig, så skriv til wl@weeleaf.com med det samme."
+        )
+    );
 }

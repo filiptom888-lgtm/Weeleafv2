@@ -49,7 +49,7 @@ export default function ModalSceneBackground() {
         className="absolute inset-0 z-[2]"
         style={{
           background:
-            'linear-gradient(180deg, rgba(255,255,255,0.12) 0%, rgba(200, 144, 74, 0.06) 100%)',
+            'linear-gradient(180deg, rgba(255, 180, 90, 0.08) 0%, rgba(200, 110, 40, 0.12) 100%)',
         }}
       />
     </div>

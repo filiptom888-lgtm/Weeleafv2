@@ -1,6 +1,6 @@
 /**
  * Default shop categories & products.
- * Each category has an id, label, icon (emoji), color (hex), and products[].
+ * Each category has an id, label, icon (optional), color (hex), and products[].
  * Each product has an id, name, desc, price (optional), imageUrl (optional), link (optional).
  * These are loaded into Zustand and overridden by localStorage edits via the Admin panel.
  */
@@ -8,7 +8,7 @@ export const DEFAULT_SHOP_CATEGORIES = [
   {
     id: 'tekstiler',
     label: 'Tekstiler',
-    icon: '🛏️',
+    icon: '',
     color: '#60a5fa',
     products: [
       {
@@ -40,14 +40,14 @@ export const DEFAULT_SHOP_CATEGORIES = [
   {
     id: 'hudpleje',
     label: 'Hudpleje',
-    icon: '🧴',
+    icon: '',
     color: '#86efac',
     products: [],
   },
   {
     id: 'wellness',
     label: 'Wellness',
-    icon: '✨',
+    icon: '',
     color: '#c084fc',
     products: [],
   },

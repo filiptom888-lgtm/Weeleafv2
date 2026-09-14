@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --wl-display: 'Fraunces', ui-serif, Georgia, serif;
+  --wl-sans: 'Nunito Sans', ui-sans-serif, system-ui, sans-serif;
+  --wl-ink: #2a2218;
+  --wl-muted: #6b5c48;
+  --wl-gold: #c8904a;
+  --wl-leaf: #2d6a42;
+}
+
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -12,29 +21,56 @@ html, body, #root {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: var(--wl-sans);
+  color: var(--wl-ink);
   -webkit-font-smoothing: antialiased;
+  font-optical-sizing: auto;
 }
 
-/* Custom scrollbar for modals */
+h1, h2, h3, .wl-display {
+  font-family: var(--wl-display);
+  font-optical-sizing: auto;
+  font-variation-settings: 'SOFT' 62, 'WONK' 0.4;
+  letter-spacing: -0.02em;
+  font-weight: 560;
+}
+
+.wl-eyebrow {
+  font-family: var(--wl-sans);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: var(--wl-gold);
+}
+
+.wl-tagline {
+  font-family: var(--wl-display);
+  font-style: italic;
+  font-weight: 460;
+  font-variation-settings: 'SOFT' 80, 'WONK' 0.6;
+  letter-spacing: -0.01em;
+}
+
+button, input, textarea, select {
+  font-family: var(--wl-sans);
+}
+
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: rgba(200, 144, 74, 0.08); }
 ::-webkit-scrollbar-thumb { background: rgba(200, 144, 74, 0.35); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(74, 180, 100, 0.55); }
 
-/* Float keyframe */
 @keyframes float {
   0%, 100% { transform: translateY(0px); }
   50% { transform: translateY(-10px); }
 }
 
-/* Pulse glow keyframe */
 @keyframes pulseGlow {
   0%, 100% { opacity: 0.6; filter: blur(8px); }
   50% { opacity: 1; filter: blur(12px); }
 }
 
-/* Scroll hint pulse */
 @keyframes scrollPulse {
   0% { transform: translateY(0); opacity: 1; }
   100% { transform: translateY(6px); opacity: 0; }
@@ -44,7 +80,6 @@ html, body, #root {
   animation: float 3.5s ease-in-out infinite;
 }
 
-/* Leafy as cursor — no pointer events, always on top */
 .leafy-cursor {
   pointer-events: none;
   position: fixed;
@@ -52,7 +87,6 @@ html, body, #root {
   transform: translate(-50%, -50%);
 }
 
-/* Glass panel utility */
 .glass-panel {
   background: rgba(8, 25, 15, 0.75);
   backdrop-filter: blur(24px);
@@ -60,7 +94,6 @@ html, body, #root {
   border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
-/* CSS-only sky on mobile / low-power (no WebGL) */
 @keyframes skyDrift {
   0%, 100% {
     background-position: 50% 0%;
@@ -79,3 +112,45 @@ html, body, #root {
   background-size: 200% 200% !important;
   animation: skyDrift 28s ease-in-out infinite;
 }
+
+.wl-close {
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--wl-ink);
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255,255,255,0.9), rgba(255, 248, 236, 0.92) 55%),
+    #fff8ec;
+  border: 1px solid rgba(200, 144, 74, 0.45);
+  box-shadow:
+    0 8px 22px rgba(120, 70, 30, 0.16),
+    inset 0 1px 0 rgba(255,255,255,0.9);
+  transition: transform 0.18s ease, background 0.18s ease;
+}
+.wl-close:hover {
+  transform: scale(1.06);
+  color: var(--wl-leaf);
+  border-color: rgba(45, 106, 66, 0.4);
+}
+
+.wl-paper {
+  position: relative;
+  isolation: isolate;
+}
+.wl-paper::before,
+.wl-paper::after {
+  content: '';
+  position: absolute;
+  width: 52px;
+  height: 52px;
+  pointer-events: none;
+  opacity: 0.18;
+  background: var(--wl-gold);
+  -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 52 52'><path fill='black' d='M4 48c8-2 14-10 16-18 6 8 16 12 26 10-8-8-10-20-6-30-10 6-20 4-28-4 2 12 0 24-8 42z'/></svg>") center / contain no-repeat;
+  mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 52 52'><path fill='black' d='M4 48c8-2 14-10 16-18 6 8 16 12 26 10-8-8-10-20-6-30-10 6-20 4-28-4 2 12 0 24-8 42z'/></svg>") center / contain no-repeat;
+}
+.wl-paper::before { top: 10px; left: 10px; }
+.wl-paper::after { right: 10px; bottom: 10px; transform: rotate(180deg); }

@@ -17,15 +17,15 @@ export const VANTA_PRESETS = {
     mouseEase: true,
     minHeight: 200,
     minWidth: 200,
-    speed: 0.65,
-    scale: 3.2,
-    scaleMobile: 10,
-    skyColor: 0xc9956a,
-    cloudColor: 0xf8ead8,
-    cloudShadowColor: 0x4a3020,
-    sunColor: 0xffb84d,
-    sunGlareColor: 0xff8f3f,
-    sunlightColor: 0xffd080,
+    speed: 0.7,
+    scale: 1.35,
+    scaleMobile: 2.6,
+    skyColor: 0xe07a3a,
+    cloudColor: 0xfff4e4,
+    cloudShadowColor: 0x5a2814,
+    sunColor: 0xffc14d,
+    sunGlareColor: 0xff7a30,
+    sunlightColor: 0xffe08a,
   },
   /**
    * Modal popups — same warm palette as main page, but lighter and softer.
@@ -38,14 +38,14 @@ export const VANTA_PRESETS = {
     mouseEase: false,
     minHeight: 200,
     minWidth: 200,
-    speed: 0.38,
-    scale: 6,
-    scaleMobile: 16,
-    skyColor: 0xedd4b0,
+    speed: 0.42,
+    scale: 2.1,
+    scaleMobile: 4.2,
+    skyColor: 0xe89650,
     cloudColor: 0xfffbf5,
-    cloudShadowColor: 0xc9a080,
-    sunColor: 0xffd99a,
-    sunGlareColor: 0xffc878,
+    cloudShadowColor: 0x8a4a28,
+    sunColor: 0xffd080,
+    sunGlareColor: 0xff9a48,
     sunlightColor: 0xfff0c8,
   },
 }
@@ -137,16 +137,22 @@ export default function VantaBackground({
     if (!loader) return undefined
 
     const delay = INIT_DELAY_MS[presetKey] ?? INIT_DELAY_MS[effect] ?? 0
+    const presetOpts = VANTA_PRESETS[presetKey] || VANTA_PRESETS[effect] || {}
     const timer = window.setTimeout(() => {
       ;(async () => {
         try {
           const mod = await loader()
           const VantaEffect = mod.default || mod
           if (cancelled || !elRef.current) return
+          if (vantaRef.current) {
+            try { vantaRef.current.destroy() } catch (_) {}
+            vantaRef.current = null
+            cleanupEl(elRef.current)
+          }
           vantaRef.current = VantaEffect({
             el: elRef.current,
             THREE,
-            ...(VANTA_PRESETS[presetKey] || VANTA_PRESETS[effect] || {}),
+            ...presetOpts,
             ...options,
           })
         } catch (err) {
@@ -158,7 +164,7 @@ export default function VantaBackground({
     return () => {
       cancelled = true
       window.clearTimeout(timer)
-      if (!persistent && vantaRef.current) {
+      if (vantaRef.current) {
         try {
           vantaRef.current.destroy()
         } catch (_) {}
@@ -166,7 +172,7 @@ export default function VantaBackground({
         cleanupEl(elRef.current)
       }
     }
-  }, [effect, presetKey, enabled, persistent])
+  }, [effect, presetKey, enabled])
 
   if (!enabled) return null
 

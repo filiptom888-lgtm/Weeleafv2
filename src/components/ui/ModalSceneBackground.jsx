@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import useStore from '../../store/useStore'
 import VantaBackground from './VantaBackground'
-import { WL } from '../../styles/modalTheme'
 import { useGraphicsTier } from '../../hooks/useLiteGraphics'
 
 /**
@@ -31,10 +30,7 @@ export default function ModalSceneBackground() {
       }}
       aria-hidden={!isModalOpen}
     >
-      <div
-        className={`absolute inset-0 ${!useVanta ? 'sky-lite modal-sky-lite' : ''}`}
-        style={{ background: WL.modalBackdrop }}
-      />
+      <div className="absolute inset-0 sky-lite modal-sky-lite" />
       {useVanta && (
         <VantaBackground
           effect="clouds"
@@ -49,7 +45,7 @@ export default function ModalSceneBackground() {
         className="absolute inset-0 z-[2]"
         style={{
           background:
-            'linear-gradient(180deg, rgba(255, 180, 90, 0.08) 0%, rgba(200, 110, 40, 0.12) 100%)',
+            'linear-gradient(180deg, rgba(255, 214, 170, 0.06) 0%, rgba(200, 140, 80, 0.08) 100%)',
         }}
       />
     </div>

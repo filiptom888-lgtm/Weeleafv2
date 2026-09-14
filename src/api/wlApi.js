@@ -207,4 +207,31 @@ export const api = {
       method: 'POST',
       auth: true,
     }),
+
+  fetchFriends: () =>
+    request('/friends', { auth: true }),
+
+  fetchFriendStatus: (userId) =>
+    request(`/friends/with/${encodeURIComponent(userId)}`, { auth: true }),
+
+  sendFriendRequest: (userId) =>
+    request('/friends', { method: 'POST', body: { userId }, auth: true }),
+
+  acceptFriend: (friendshipId) =>
+    request(`/friends/${encodeURIComponent(friendshipId)}/accept`, {
+      method: 'POST',
+      auth: true,
+    }),
+
+  declineFriend: (friendshipId) =>
+    request(`/friends/${encodeURIComponent(friendshipId)}/decline`, {
+      method: 'POST',
+      auth: true,
+    }),
+
+  removeFriend: (friendshipId) =>
+    request(`/friends/${encodeURIComponent(friendshipId)}`, {
+      method: 'DELETE',
+      auth: true,
+    }),
 }

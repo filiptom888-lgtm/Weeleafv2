@@ -1,15 +1,17 @@
 import * as THREE from 'three'
 
-const COIN_TEX_SIZE = 256
+const COIN_TEX_SIZE = 1024
 const cache = new Map()
 const loader = new THREE.TextureLoader()
 
 function configureCoinTexture(texture) {
   texture.colorSpace = THREE.SRGBColorSpace
   texture.flipY = true
-  texture.minFilter = THREE.LinearFilter
+  texture.generateMipmaps = true
+  texture.minFilter = THREE.LinearMipmapLinearFilter
   texture.magFilter = THREE.LinearFilter
-  texture.generateMipmaps = false
+  texture.anisotropy = 16
+  texture.needsUpdate = true
   return texture
 }
 
@@ -23,17 +25,25 @@ function isRemoteUrl(url) {
   return url.startsWith('http://') || url.startsWith('https://') || url.startsWith('/')
 }
 
+function nextPowerOfTwo(n) {
+  const v = Math.max(1, n)
+  return 2 ** Math.ceil(Math.log2(v))
+}
+
 function textureFromImageSource(img) {
-  const w = img.width || img.naturalWidth
-  const h = img.height || img.naturalHeight
-  const scale = Math.min(1, COIN_TEX_SIZE / Math.max(w, h, 1))
-  const cw = Math.max(1, Math.round(w * scale))
-  const ch = Math.max(1, Math.round(h * scale))
+  const w = img.width || img.naturalWidth || COIN_TEX_SIZE
+  const h = img.height || img.naturalHeight || COIN_TEX_SIZE
+  const longest = Math.max(w, h, 1)
+  const scale = longest > COIN_TEX_SIZE ? COIN_TEX_SIZE / longest : 1
+  const cw = nextPowerOfTwo(Math.max(1, Math.round(w * scale)))
+  const ch = nextPowerOfTwo(Math.max(1, Math.round(h * scale)))
 
   const canvas = document.createElement('canvas')
   canvas.width = cw
   canvas.height = ch
-  const ctx = canvas.getContext('2d')
+  const ctx = canvas.getContext('2d', { alpha: true })
+  ctx.imageSmoothingEnabled = true
+  ctx.imageSmoothingQuality = 'high'
   ctx.drawImage(img, 0, 0, cw, ch)
 
   const texture = new THREE.CanvasTexture(canvas)
@@ -46,11 +56,7 @@ async function loadImageSource(url) {
 
   if (typeof createImageBitmap === 'function') {
     try {
-      return await createImageBitmap(blob, {
-        resizeWidth: COIN_TEX_SIZE,
-        resizeHeight: COIN_TEX_SIZE,
-        resizeQuality: 'high',
-      })
+      return await createImageBitmap(blob, { resizeQuality: 'high' })
     } catch {
       /* fall through */
     }
@@ -88,6 +94,29 @@ function loadHttpTexture(url) {
   })
 }
 
+function fallbackUrls(url) {
+  if (!url || url.startsWith('data:')) return []
+  const out = []
+  if (/\.webp($|\?)/i.test(url)) out.push(url.replace(/\.webp(?=$|\?)/i, '.png'))
+  if (/\.png($|\?)/i.test(url)) out.push(url.replace(/\.png(?=$|\?)/i, '.webp'))
+  return out.filter((u) => u !== url)
+}
+
+async function loadHttpTextureWithFallback(url) {
+  try {
+    return await loadHttpTexture(url)
+  } catch (err) {
+    for (const alt of fallbackUrls(url)) {
+      try {
+        const tex = await loadHttpTexture(alt)
+        cache.set(url, { texture: tex, promise: Promise.resolve(tex) })
+        return tex
+      } catch (_) {}
+    }
+    throw err
+  }
+}
+
 /** Preload a coin image once. HTTP URLs use browser cache + TextureLoader (fast). */
 export function preloadTexture(url) {
   if (!url) return Promise.resolve(null)
@@ -96,7 +125,7 @@ export function preloadTexture(url) {
   if (hit?.promise) return hit.promise
 
   const promise = (isRemoteUrl(url)
-    ? loadHttpTexture(url)
+    ? loadHttpTextureWithFallback(url)
     : decodeDataUrl(url).then((t) => storeTexture(url, t))
   ).catch((err) => {
     cache.delete(url)
@@ -123,6 +152,16 @@ export function preloadCoinImages(coins = []) {
 
 export function getCachedTexture(url) {
   return cache.get(url)?.texture ?? null
+}
+
+export function applyCoinAnisotropy(texture, gl) {
+  if (!texture || !gl) return
+  const max = gl.capabilities?.getMaxAnisotropy?.() || 16
+  const next = Math.min(16, max)
+  if (texture.anisotropy !== next) {
+    texture.anisotropy = next
+    texture.needsUpdate = true
+  }
 }
 
 export function clearTextureCache() {

@@ -182,4 +182,19 @@ CREATE TABLE IF NOT EXISTS messages (
   CONSTRAINT fk_messages_sender FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS friendships (
+  id           VARCHAR(64) NOT NULL PRIMARY KEY,
+  pair_key     VARCHAR(129) NOT NULL,
+  requester_id VARCHAR(64) NOT NULL,
+  addressee_id VARCHAR(64) NOT NULL,
+  status       ENUM('pending','accepted','declined') NOT NULL DEFAULT 'pending',
+  created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_friendships_pair (pair_key),
+  INDEX idx_friendships_requester (requester_id, status),
+  INDEX idx_friendships_addressee (addressee_id, status),
+  CONSTRAINT fk_fr_requester FOREIGN KEY (requester_id) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT fk_fr_addressee FOREIGN KEY (addressee_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 SET FOREIGN_KEY_CHECKS = 1;

@@ -4,6 +4,7 @@ import { DEFAULT_SHOP_CATEGORIES } from '../data/shopData'
 import { DEFAULT_BLOG_POSTS } from '../data/blogData'
 import { api, getToken, setToken, loadCachedUser, saveCachedUser } from '../api/wlApi'
 import { preloadCoinImages } from '../utils/textureCache'
+import { centerOrbitOnCoin, orbitDeltaToCoin } from '../data/orbitState'
 
 const DEFAULT_STATS = [
   { id: 'members', label: 'Medlemmer', value: 0, suffix: '' },
@@ -47,14 +48,31 @@ const useStore = create((set, get) => ({
   githubSettings: { token: '', owner: 'filiptom888-lgtm', repo: 'Weeleafv2', branch: 'main' },
   currentUser: loadCachedUser(),
 
-  setActiveCoin: (coin) =>
-    set({
-      activeCoin: coin,
-      isModalOpen: coin !== null,
-      sceneRevealPhase: coin ? 'hidden' : 'visible',
-    }),
+  setActiveCoin: (coin) => {
+    if (!coin) {
+      window.clearTimeout(get()._orbitOpenTimer)
+      set({ activeCoin: null, isModalOpen: false, sceneRevealPhase: 'visible', _orbitOpenTimer: 0 })
+      return
+    }
+    window.clearTimeout(get()._orbitOpenTimer)
+    const remaining = Math.abs(orbitDeltaToCoin(coin))
+    centerOrbitOnCoin(coin, { duration: 0.72, force: true })
+    const wait = remaining < 2 ? 40 : 520
+    const timer = window.setTimeout(() => {
+      set({
+        activeCoin: coin,
+        isModalOpen: true,
+        sceneRevealPhase: 'hidden',
+        _orbitOpenTimer: 0,
+      })
+    }, wait)
+    set({ activeCoin: coin, isModalOpen: false, sceneRevealPhase: 'visible', _orbitOpenTimer: timer })
+  },
   revealScene: () => set({ sceneRevealPhase: 'visible' }),
-  closeModal: () => set({ activeCoin: null, isModalOpen: false, sceneRevealPhase: 'visible', modalScrollRoot: null }),
+  closeModal: () => {
+    window.clearTimeout(get()._orbitOpenTimer)
+    set({ activeCoin: null, isModalOpen: false, sceneRevealPhase: 'visible', modalScrollRoot: null, _orbitOpenTimer: 0 })
+  },
   modalScrollRoot: null,
   setModalScrollRoot: (el) => set({ modalScrollRoot: el }),
   toggleChat: () => set((s) => ({ isChatOpen: !s.isChatOpen })),

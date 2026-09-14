@@ -169,9 +169,54 @@ function FeedComposer({ currentUser }) {
 }
 
 function FeedPost({ post, onOpenProfile }) {
+  const currentUser = useStore((s) => s.currentUser)
+  const updateBlogPost = useStore((s) => s.updateBlogPost)
+  const deleteBlogPost = useStore((s) => s.deleteBlogPost)
+  const [editing, setEditing] = useState(false)
+  const [title, setTitle] = useState(post.title || '')
+  const [body, setBody] = useState(post.body || '')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
   const paragraphs = (post.body || '').split('\n').filter(Boolean)
   const bodyText = paragraphs.join('\n\n')
   const canOpen = Boolean(post.authorId)
+  const canManage = Boolean(
+    currentUser && (currentUser.id === post.authorId || currentUser.role === 'admin')
+  )
+
+  useEffect(() => {
+    setTitle(post.title || '')
+    setBody(post.body || '')
+    setEditing(false)
+    setError('')
+  }, [post.id, post.title, post.body])
+
+  const save = async () => {
+    const nextBody = body.trim()
+    if (!nextBody || busy) return
+    setBusy(true)
+    setError('')
+    const res = await updateBlogPost(post.id, {
+      title: title.trim() || nextBody.split('\n')[0].slice(0, 72),
+      body: nextBody,
+    })
+    setBusy(false)
+    if (!res?.ok) {
+      setError(res?.error || 'Kunne ikke gemme.')
+      return
+    }
+    setEditing(false)
+  }
+
+  const remove = async () => {
+    if (!window.confirm('Slet indlæg? Det kan ikke fortrydes.')) return
+    setBusy(true)
+    setError('')
+    const res = await deleteBlogPost(post.id)
+    setBusy(false)
+    if (!res?.ok) setError(res?.error || 'Kunne ikke slette.')
+  }
 
   return (
     <article className={`${modalPad} py-6 border-b`} style={{ borderColor: WL.borderLight }}>
@@ -203,35 +248,105 @@ function FeedPost({ post, onOpenProfile }) {
             <span className="text-sm" style={{ color: WL.textSoftOnModal }}>
               · {formatFeedDate(post.date)}
             </span>
+            {canManage && !editing && (
+              <span className="ml-auto flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditing(true)}
+                  className="text-xs font-medium"
+                  style={{ color: WL.textMuted }}
+                >
+                  Rediger
+                </button>
+                <button
+                  type="button"
+                  onClick={remove}
+                  disabled={busy}
+                  className="text-xs font-medium"
+                  style={{ color: '#c45c4a' }}
+                >
+                  Slet
+                </button>
+              </span>
+            )}
           </div>
-          {post.title && (
-            <h3 className="wl-display text-lg md:text-xl leading-snug mt-2" style={{ color: WL.textOnModal }}>
-              {post.title}
-            </h3>
-          )}
-          {bodyText && (
-            <p className="text-[15px] md:text-base leading-7 whitespace-pre-line mt-2 max-w-prose" style={{ color: WL.textMutedOnModal }}>
-              {bodyText}
-            </p>
-          )}
-          {post.imageUrl && (
-            <div className="mt-4 rounded-2xl overflow-hidden" style={{ border: `1px solid ${WL.borderLight}` }}>
-              <img
-                src={post.imageUrl}
-                alt=""
-                className="w-full max-h-[360px] object-cover"
-                onError={(e) => (e.target.style.display = 'none')}
+          {editing ? (
+            <div className="mt-3 space-y-2">
+              <input
+                className={accountInputCls}
+                style={accountInputStyle}
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Titel (valgfri)"
+                maxLength={120}
               />
+              <textarea
+                className={`${accountInputCls} resize-none`}
+                style={accountInputStyle}
+                rows={4}
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+                placeholder="Hvad vil du dele med WL?"
+              />
+              {error && <p className="text-xs text-red-500">{error}</p>}
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTitle(post.title || '')
+                    setBody(post.body || '')
+                    setEditing(false)
+                    setError('')
+                  }}
+                  className="text-xs font-medium px-3 py-1.5 rounded-full"
+                  style={{ color: WL.textMuted }}
+                >
+                  Annuller
+                </button>
+                <button
+                  type="button"
+                  onClick={save}
+                  disabled={busy || !body.trim()}
+                  className="px-4 py-1.5 rounded-full text-sm font-semibold disabled:opacity-40"
+                  style={primaryBtnStyle}
+                >
+                  {busy ? 'Gemmer…' : 'Gem'}
+                </button>
+              </div>
             </div>
-          )}
-          {post.tags?.length > 0 && (
-            <div className="flex flex-wrap gap-x-2.5 gap-y-1 mt-3">
-              {post.tags.map((t) => (
-                <span key={t} className="text-sm font-medium" style={{ color: WL.green }}>
-                  #{t}
-                </span>
-              ))}
-            </div>
+          ) : (
+            <>
+              {post.title && (
+                <h3 className="wl-display text-lg md:text-xl leading-snug mt-2" style={{ color: WL.textOnModal }}>
+                  {post.title}
+                </h3>
+              )}
+              {bodyText && (
+                <p className="text-[15px] md:text-base leading-7 whitespace-pre-line mt-2 max-w-prose" style={{ color: WL.textMutedOnModal }}>
+                  {bodyText}
+                </p>
+              )}
+              {post.imageUrl && (
+                <div className="mt-4 rounded-2xl overflow-hidden" style={{ border: `1px solid ${WL.borderLight}` }}>
+                  <img
+                    src={post.imageUrl}
+                    alt=""
+                    className="w-full max-h-[360px] object-cover"
+                    onError={(e) => (e.target.style.display = 'none')}
+                  />
+                </div>
+              )}
+              {post.tags?.length > 0 && (
+                <div className="flex flex-wrap gap-x-2.5 gap-y-1 mt-3">
+                  {post.tags.map((t) => (
+                    <span key={t} className="text-sm font-medium" style={{ color: WL.green }}>
+                      #{t}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
+            </>
           )}
         </div>
       </div>
@@ -239,11 +354,14 @@ function FeedPost({ post, onOpenProfile }) {
   )
 }
 
-function ProfileSheet({ userId, onClose, onMessage }) {
+function ProfileSheet({ userId, onClose, onMessage, onFriendsChanged }) {
   const currentUser = useStore((s) => s.currentUser)
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
+  const [relation, setRelation] = useState(null)
+  const [friendBusy, setFriendBusy] = useState(false)
+  const [friendError, setFriendError] = useState('')
 
   useEffect(() => {
     let live = true
@@ -260,9 +378,75 @@ function ProfileSheet({ userId, onClose, onMessage }) {
     return () => { live = false }
   }, [userId])
 
+  useEffect(() => {
+    let live = true
+    setRelation(null)
+    setFriendError('')
+    if (!currentUser || currentUser.id === userId) return undefined
+    api.fetchFriendStatus(userId).then((res) => {
+      if (!live) return
+      if (res.ok) setRelation(res.friendship || null)
+    })
+    return () => { live = false }
+  }, [userId, currentUser?.id])
+
   const user = data?.user
   const posts = data?.posts || []
   const isSelf = currentUser?.id === userId
+  const status = relation?.status || null
+  const accepted = status === 'accepted'
+  const incoming = Boolean(relation?.incoming)
+  const outgoing = Boolean(relation?.outgoing)
+
+  const refreshRelation = async () => {
+    const res = await api.fetchFriendStatus(userId)
+    if (res.ok) setRelation(res.friendship || null)
+    onFriendsChanged?.()
+  }
+
+  const sendRequest = async () => {
+    if (!currentUser) {
+      openLoginNode()
+      return
+    }
+    setFriendBusy(true)
+    setFriendError('')
+    const res = await api.sendFriendRequest(userId)
+    setFriendBusy(false)
+    if (!res.ok) {
+      setFriendError(res.error || 'Kunne ikke sende anmodning.')
+      return
+    }
+    setRelation(res.friendship || null)
+    onFriendsChanged?.()
+  }
+
+  const accept = async () => {
+    if (!relation?.id) return
+    setFriendBusy(true)
+    setFriendError('')
+    const res = await api.acceptFriend(relation.id)
+    setFriendBusy(false)
+    if (!res.ok) {
+      setFriendError(res.error || 'Kunne ikke acceptere.')
+      return
+    }
+    setRelation(res.friendship || null)
+    onFriendsChanged?.()
+  }
+
+  const decline = async () => {
+    if (!relation?.id) return
+    setFriendBusy(true)
+    setFriendError('')
+    const res = await api.declineFriend(relation.id)
+    setFriendBusy(false)
+    if (!res.ok) {
+      setFriendError(res.error || 'Kunne ikke afvise.')
+      return
+    }
+    await refreshRelation()
+  }
 
   return (
     <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-6">
@@ -291,14 +475,60 @@ function ProfileSheet({ userId, onClose, onMessage }) {
               </div>
             </div>
             {!isSelf && (
-              <button
-                type="button"
-                onClick={() => onMessage(user)}
-                className="w-full mt-4 py-2.5 rounded-full text-sm font-semibold"
-                style={primaryBtnStyle}
-              >
-                {currentUser ? 'Send besked' : 'Log ind for at sende besked'}
-              </button>
+              <div className="mt-4 space-y-2">
+                {incoming && (
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={accept}
+                      disabled={friendBusy}
+                      className="flex-1 py-2.5 rounded-full text-sm font-semibold disabled:opacity-40"
+                      style={primaryBtnStyle}
+                    >
+                      Accepter
+                    </button>
+                    <button
+                      type="button"
+                      onClick={decline}
+                      disabled={friendBusy}
+                      className="flex-1 py-2.5 rounded-full text-sm font-semibold disabled:opacity-40"
+                      style={{
+                        background: 'rgba(255,255,255,0.55)',
+                        border: `1px solid ${WL.border}`,
+                        color: WL.text,
+                      }}
+                    >
+                      Afvis
+                    </button>
+                  </div>
+                )}
+                {!incoming && !accepted && (
+                  <button
+                    type="button"
+                    onClick={sendRequest}
+                    disabled={friendBusy || outgoing}
+                    className="w-full py-2.5 rounded-full text-sm font-semibold disabled:opacity-40"
+                    style={primaryBtnStyle}
+                  >
+                    {!currentUser
+                      ? 'Log ind for at sende venneanmodning'
+                      : outgoing
+                        ? 'Anmodning sendt'
+                        : 'Send venneanmodning'}
+                  </button>
+                )}
+                {accepted && (
+                  <button
+                    type="button"
+                    onClick={() => onMessage(user)}
+                    className="w-full py-2.5 rounded-full text-sm font-semibold"
+                    style={primaryBtnStyle}
+                  >
+                    Send besked
+                  </button>
+                )}
+                {friendError && <p className="text-xs text-red-500">{friendError}</p>}
+              </div>
             )}
             <div className="mt-5 space-y-3">
               {posts.length === 0 ? (
@@ -316,6 +546,154 @@ function ProfileSheet({ userId, onClose, onMessage }) {
           </>
         )}
       </div>
+    </div>
+  )
+}
+
+function FriendRow({ item, onOpenProfile, onClick, action }) {
+  const user = item.user || {}
+  const handleSelect = () => {
+    if (onClick) onClick(user)
+    else if (user.id) onOpenProfile(user.id)
+  }
+  return (
+    <li className="flex items-center gap-3 px-5 py-3.5 border-b" style={{ borderColor: WL.borderLight }}>
+      <button type="button" className="flex-shrink-0" onClick={handleSelect}>
+        <UserAvatar name={user.name} avatarId={user.avatarId} avatarUrl={user.avatarUrl} size={36} />
+      </button>
+      <button
+        type="button"
+        className="min-w-0 flex-1 text-left"
+        onClick={handleSelect}
+      >
+        <span className="text-sm font-semibold block truncate" style={{ color: WL.text }}>
+          {user.name || 'Medlem'}
+        </span>
+        {item.status === 'pending' && (
+          <span className="text-xs" style={{ color: WL.textSoft }}>
+            {item.incoming ? 'Vil gerne være venner' : 'Afventer svar'}
+          </span>
+        )}
+        {item.status === 'accepted' && (
+          <span className="text-xs" style={{ color: WL.textSoft }}>Tryk for at starte en chat</span>
+        )}
+      </button>
+      {action}
+    </li>
+  )
+}
+
+function FriendsPane({ onOpenChat, onOpenProfile, onFriendsChanged }) {
+  const [data, setData] = useState({ friends: [], incoming: [], outgoing: [] })
+  const [error, setError] = useState('')
+  const [busyId, setBusyId] = useState('')
+
+  const refresh = useCallback(async () => {
+    const res = await api.fetchFriends()
+    if (!res.ok) {
+      setError(res.error || 'Kunne ikke hente venner.')
+      return
+    }
+    setError('')
+    setData({
+      friends: res.friends || [],
+      incoming: res.incoming || [],
+      outgoing: res.outgoing || [],
+    })
+    onFriendsChanged?.(res)
+  }, [onFriendsChanged])
+
+  useEffect(() => {
+    refresh()
+  }, [refresh])
+
+  const respond = async (id, accept) => {
+    setBusyId(id)
+    const res = accept ? await api.acceptFriend(id) : await api.declineFriend(id)
+    setBusyId('')
+    if (!res.ok) {
+      setError(res.error || 'Kunne ikke opdatere anmodningen.')
+      return
+    }
+    await refresh()
+  }
+
+  const { friends, incoming, outgoing } = data
+
+  return (
+    <div className="min-h-[420px]">
+      {error && <p className="px-5 pt-4 text-xs text-red-500">{error}</p>}
+      {incoming.length > 0 && (
+        <div>
+          <p className={`${modalPad} pt-5 pb-1 text-xs font-semibold uppercase tracking-wide`} style={{ color: WL.textSoft }}>
+            Venneanmodninger
+          </p>
+          <ul>
+            {incoming.map((item) => (
+              <FriendRow
+                key={item.id}
+                item={item}
+                onOpenProfile={onOpenProfile}
+                action={(
+                  <div className="flex gap-1.5 flex-shrink-0">
+                    <button
+                      type="button"
+                      disabled={busyId === item.id}
+                      onClick={() => respond(item.id, true)}
+                      className="px-3 py-1.5 rounded-full text-xs font-semibold disabled:opacity-40"
+                      style={primaryBtnStyle}
+                    >
+                      Accepter
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busyId === item.id}
+                      onClick={() => respond(item.id, false)}
+                      className="px-3 py-1.5 rounded-full text-xs font-semibold disabled:opacity-40"
+                      style={{ color: WL.textMuted, border: `1px solid ${WL.border}` }}
+                    >
+                      Afvis
+                    </button>
+                  </div>
+                )}
+              />
+            ))}
+          </ul>
+        </div>
+      )}
+      <div>
+        <p className={`${modalPad} pt-5 pb-1 text-xs font-semibold uppercase tracking-wide`} style={{ color: WL.textSoft }}>
+          Venner
+        </p>
+        {friends.length === 0 ? (
+          <p className="px-5 py-8 text-sm" style={{ color: WL.textSoft }}>
+            Ingen venner endnu. Tryk på et profilbillede i feedet for at sende en anmodning.
+          </p>
+        ) : (
+          <ul>
+            {friends.map((item) => (
+              <FriendRow
+                key={item.id}
+                item={item}
+                onOpenProfile={onOpenProfile}
+                onClick={onOpenChat}
+              />
+            ))}
+          </ul>
+        )}
+      </div>
+      {outgoing.length > 0 && (
+        <div>
+          <p className={`${modalPad} pt-5 pb-1 text-xs font-semibold uppercase tracking-wide`} style={{ color: WL.textSoft }}>
+            Sendte anmodninger
+          </p>
+          <ul>
+            {outgoing.map((item) => (
+              <FriendRow key={item.id} item={item} onOpenProfile={onOpenProfile} />
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   )
 }
@@ -556,6 +934,7 @@ export default function CommunityModal({ coin, onClose }) {
   const [profileUserId, setProfileUserId] = useState(null)
   const [conversations, setConversations] = useState([])
   const [activeConversation, setActiveConversation] = useState(null)
+  const [incomingFriends, setIncomingFriends] = useState(0)
   const loaderRef = useRef()
 
   const sorted = useMemo(
@@ -566,14 +945,32 @@ export default function CommunityModal({ coin, onClose }) {
   const hasMore = visibleCount < sorted.length
   const unreadTotal = conversations.reduce((n, c) => n + (c.unreadCount || 0), 0)
 
+  const refreshFriendsBadge = useCallback((payload) => {
+    if (payload?.incoming) {
+      setIncomingFriends(payload.incoming.length)
+      return
+    }
+    if (!currentUser) {
+      setIncomingFriends(0)
+      return
+    }
+    api.fetchFriends().then((res) => {
+      if (res.ok) setIncomingFriends((res.incoming || []).length)
+    })
+  }, [currentUser])
+
   useEffect(() => {
     if (!currentUser) {
       setConversations([])
+      setIncomingFriends(0)
       return undefined
     }
     let live = true
     api.fetchConversations().then((res) => {
       if (live && res.ok) setConversations(res.conversations || [])
+    })
+    api.fetchFriends().then((res) => {
+      if (live && res.ok) setIncomingFriends((res.incoming || []).length)
     })
     return () => { live = false }
   }, [currentUser])
@@ -613,10 +1010,17 @@ export default function CommunityModal({ coin, onClose }) {
   }
 
   const messagesLabel = unreadTotal > 0 ? `Beskeder (${unreadTotal > 9 ? '9+' : unreadTotal})` : 'Beskeder'
+  const friendsLabel = incomingFriends > 0 ? `Venner (${incomingFriends > 9 ? '9+' : incomingFriends})` : 'Venner'
+
+  const tagline = tab === 'feed'
+    ? (coin.content?.tagline || `${sorted.length} indlæg`)
+    : tab === 'friends'
+      ? 'Dine venner'
+      : 'Dine samtaler'
 
   return (
     <FullscreenShell onClose={onClose} contentClassName="max-w-5xl" headerLayout="none">
-      <div className="w-full rounded-[1.85rem] overflow-hidden wl-paper" style={airGlassStyle}>
+      <div className="w-full rounded-[1.85rem] overflow-hidden" style={airGlassStyle}>
         <div
           className={`${modalPad} pt-7 pb-5 md:pt-8 md:pb-6`}
           style={{
@@ -639,14 +1043,13 @@ export default function CommunityModal({ coin, onClose }) {
             className="wl-tagline text-base md:text-xl mt-3 leading-relaxed max-w-2xl"
             style={{ color: WL.textMutedOnModal }}
           >
-            {tab === 'feed'
-              ? (coin.content?.tagline || `${sorted.length} indlæg`)
-              : 'Dine samtaler'}
+            {tagline}
           </p>
-          <div className="mt-5 max-w-md">
+          <div className="mt-5 max-w-xl">
             <AccountTabBar
               tabs={[
                 { key: 'feed', label: 'Feed' },
+                { key: 'friends', label: friendsLabel },
                 { key: 'messages', label: messagesLabel },
               ]}
               active={tab}
@@ -697,6 +1100,20 @@ export default function CommunityModal({ coin, onClose }) {
           </div>
         )}
 
+        {tab === 'friends' && (
+          currentUser ? (
+            <FriendsPane
+              onOpenChat={startMessage}
+              onOpenProfile={openProfile}
+              onFriendsChanged={refreshFriendsBadge}
+            />
+          ) : (
+            <div className={`${modalPad} py-10`}>
+              <LoginCta />
+            </div>
+          )
+        )}
+
         {tab === 'messages' && (
           currentUser ? (
             <MessagesPane
@@ -719,6 +1136,7 @@ export default function CommunityModal({ coin, onClose }) {
           userId={profileUserId}
           onClose={() => setProfileUserId(null)}
           onMessage={startMessage}
+          onFriendsChanged={refreshFriendsBadge}
         />
       )}
     </FullscreenShell>

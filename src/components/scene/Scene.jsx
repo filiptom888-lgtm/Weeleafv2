@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useMemo } from 'react'
+import React, { useEffect, useRef, useMemo, Suspense } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { AdaptiveDpr, AdaptiveEvents } from '@react-three/drei'
 import * as THREE from 'three'
@@ -9,7 +9,7 @@ import { USE_TREE } from './WeeleafEmblem'
 import CenterLeafy from './CenterLeafy'
 import OrbitingCoins from './OrbitingCoins'
 
-import { orbitState } from '../../data/orbitState'
+import { orbitState, markOrbitManual } from '../../data/orbitState'
 import useStore from '../../store/useStore'
 import { useGraphicsTier } from '../../hooks/useLiteGraphics'
 
@@ -464,7 +464,11 @@ function SceneContents({ shadows }) {
   return (
     <>
       <Lighting shadows={shadows} />
-      {USE_TREE ? <LifeTree /> : <CenterLeafy />}
+      {USE_TREE ? <LifeTree /> : (
+        <Suspense fallback={null}>
+          <CenterLeafy />
+        </Suspense>
+      )}
       <OrbitingCoins />
     </>
   )
@@ -483,10 +487,13 @@ export default function Scene() {
       // Let the modal (or any scrollable overlay) handle its own scroll
       if (isModalOpen()) return
       e.preventDefault()
-      const delta = e.deltaX !== 0 ? e.deltaX : e.deltaY
+      markOrbitManual()
+      const raw = e.deltaX !== 0 ? e.deltaX : e.deltaY
+      const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 800 : 1
+      const delta = raw * unit
       gsap.to(orbitState, {
-        angle: orbitState.angle + delta * 0.09,
-        duration: 0.9,
+        angle: orbitState.angle + delta * 0.18,
+        duration: 0.5,
         ease: 'power2.out',
         overwrite: 'auto',
       })
@@ -499,6 +506,7 @@ export default function Scene() {
     }
     const handleTouchMove = (e) => {
       if (isModalOpen()) return
+      markOrbitManual()
       const dx = touchStartX - e.touches[0].clientX
       touchStartX = e.touches[0].clientX
       gsap.to(orbitState, {

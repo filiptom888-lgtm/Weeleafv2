@@ -1,5 +1,4 @@
 import VantaBackground from './VantaBackground'
-import { WL } from '../../styles/modalTheme'
 import { useGraphicsTier } from '../../hooks/useLiteGraphics'
 
 /** Main-page backdrop — warm sunset clouds, CSS fallback on weak GPUs. */
@@ -10,12 +9,7 @@ export default function MainSceneBackground({ visible = true, paused = false }) 
 
   return (
     <div className="fixed inset-0 z-0" aria-hidden>
-      {!useVanta && (
-        <div
-          className="absolute inset-0 sky-lite"
-          style={{ background: WL.pageBg }}
-        />
-      )}
+      <div className="absolute inset-0 sky-lite" />
 
       {useVanta && (
         <VantaBackground
@@ -32,7 +26,7 @@ export default function MainSceneBackground({ visible = true, paused = false }) 
         style={{
           zIndex: 3,
           background:
-            'radial-gradient(ellipse 90% 75% at 50% 50%, transparent 42%, rgba(180, 72, 22, 0.14) 100%)',
+            'radial-gradient(ellipse 90% 75% at 50% 50%, transparent 42%, rgba(180, 110, 60, 0.08) 100%)',
         }}
       />
     </div>

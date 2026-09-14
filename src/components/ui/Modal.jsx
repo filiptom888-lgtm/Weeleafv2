@@ -139,7 +139,7 @@ export default function Modal() {
 
   return (
     <FullscreenShell onClose={closeModal} contentClassName="max-w-5xl" headerLayout="none">
-      <div className="w-full rounded-[1.85rem] overflow-hidden wl-paper" style={airGlassStyle}>
+      <div className="w-full rounded-[1.85rem] overflow-hidden" style={airGlassStyle}>
         <div
           className={`${modalPad} pt-7 pb-6 md:pt-8 md:pb-7`}
           style={{

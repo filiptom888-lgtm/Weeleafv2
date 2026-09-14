@@ -1,7 +1,7 @@
 /** Warm palette — living sunset over the 3D scene */
 export const WL = {
   pageBg:
-    'linear-gradient(180deg, #e07a3a 0%, #e89650 16%, #f0b878 38%, #f6d9b0 62%, #faf0e0 82%, #f5efe6 100%)',
+    'linear-gradient(180deg, #e8a878 0%, #ebb588 18%, #f0c49a 40%, #f6d9b8 62%, #faf0e4 82%, #f7f1e8 100%)',
   headerBg: 'rgba(255, 251, 244, 0.92)',
   panelBg: 'rgba(255, 251, 244, 0.78)',
   panelBgSolid: '#fffbf5',
@@ -18,7 +18,7 @@ export const WL = {
   accentBar: 'linear-gradient(90deg, #2d6a42, #c8904a, #f0c070)',
   shadow: '0 12px 40px rgba(120, 70, 30, 0.14)',
   modalBackdrop:
-    'linear-gradient(180deg, #f4c89a 0%, #ebb070 28%, #e09050 58%, #d4783c 100%)',
+    'linear-gradient(180deg, #f3d2b0 0%, #ebb588 32%, #e8a878 70%, #e29a6c 100%)',
   modalHeaderGlass: 'rgba(255, 251, 244, 0.86)',
   modalHeaderBorder: 'rgba(200, 144, 74, 0.28)',
   textOnModal: '#2a2218',

@@ -27,7 +27,7 @@ export default function ShopModal({ coin, onClose }) {
 
   return (
     <FullscreenShell onClose={onClose} contentClassName="max-w-5xl" headerLayout="none">
-      <div className="w-full rounded-[1.85rem] overflow-hidden wl-paper" style={airGlassStyle}>
+      <div className="w-full rounded-[1.85rem] overflow-hidden" style={airGlassStyle}>
         {shopCategories.length > 0 && (
           <div
             className={`${modalPad} pt-7 pb-5 md:pt-8 md:pb-6`}

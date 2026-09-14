@@ -25,10 +25,6 @@ export default defineConfig({
         changeOrigin: true,
         secure: true,
       },
-      '/uploads': {
-        target: 'https://weeleaf.com',
-        changeOrigin: true,
-      },
     },
   },
 })

@@ -17,6 +17,7 @@ try {
 
         $uri === '/config' && $method === 'GET' => (function () {
             wl_migrate_conversations();
+            wl_migrate_friendships();
             wl_migrate_password_resets();
             wl_ok(['data' => wl_full_config_payload()]);
         })(),
@@ -673,6 +674,44 @@ try {
                  WHERE conversation_id = :cid AND sender_id <> :uid AND read_at IS NULL'
             )->execute(['cid' => $conversationId, 'uid' => $user['id']]);
             wl_ok(['conversation' => wl_conversation_payload($conversationId, $user['id'])]);
+        })(),
+
+        $uri === '/friends' && $method === 'GET' => (function () {
+            $user = wl_require_auth();
+            wl_ok(wl_list_friends($user['id']));
+        })(),
+
+        $uri === '/friends' && $method === 'POST' => (function () {
+            $user = wl_require_auth();
+            $body = wl_json_input();
+            $otherId = trim((string) ($body['userId'] ?? ''));
+            if ($otherId === '') {
+                wl_error('userId påkrævet.');
+            }
+            wl_ok(['friendship' => wl_send_friend_request($user['id'], $otherId)], 201);
+        })(),
+
+        preg_match('#^/friends/with/([^/]+)$#', $uri, $m) && $method === 'GET' => (function () use ($m) {
+            $user = wl_require_auth();
+            $otherId = $m[1];
+            $row = wl_find_friendship($user['id'], $otherId);
+            wl_ok(['friendship' => $row ? wl_friendship_payload($row, $user['id']) : null]);
+        })(),
+
+        preg_match('#^/friends/([^/]+)/accept$#', $uri, $m) && $method === 'POST' => (function () use ($m) {
+            $user = wl_require_auth();
+            wl_ok(['friendship' => wl_respond_friendship($m[1], $user['id'], 'accepted')]);
+        })(),
+
+        preg_match('#^/friends/([^/]+)/decline$#', $uri, $m) && $method === 'POST' => (function () use ($m) {
+            $user = wl_require_auth();
+            wl_ok(['friendship' => wl_respond_friendship($m[1], $user['id'], 'declined')]);
+        })(),
+
+        preg_match('#^/friends/([^/]+)$#', $uri, $m) && $method === 'DELETE' => (function () use ($m) {
+            $user = wl_require_auth();
+            wl_remove_friendship($m[1], $user['id']);
+            wl_ok();
         })(),
 
         default => wl_error('Ikke fundet: ' . $uri, 404),

@@ -125,6 +125,7 @@ function wl_require_auth(bool $adminOnly = false): array
     $hash = hash('sha256', $token);
     wl_migrate_user_avatars();
     wl_migrate_conversations();
+    wl_migrate_friendships();
     $stmt = wl_pdo()->prepare(
         'SELECT s.id AS session_id, s.expires_at, u.id, u.name, u.email, u.role, u.avatar_id, u.avatar_url, u.created_at
          FROM sessions s
@@ -785,4 +786,198 @@ function wl_send_password_changed_email(string $to): void
             "Din WeeLeaf-adgangskode er blevet opdateret. Hvis det ikke var dig, så skriv til wl@weeleaf.com med det samme."
         )
     );
+}
+
+function wl_migrate_friendships(): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+    $sql = "CREATE TABLE IF NOT EXISTS friendships (
+              id           VARCHAR(64) NOT NULL PRIMARY KEY,
+              pair_key     VARCHAR(129) NOT NULL,
+              requester_id VARCHAR(64) NOT NULL,
+              addressee_id VARCHAR(64) NOT NULL,
+              status       ENUM('pending','accepted','declined') NOT NULL DEFAULT 'pending',
+              created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              updated_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              UNIQUE KEY uq_friendships_pair (pair_key),
+              INDEX idx_friendships_requester (requester_id, status),
+              INDEX idx_friendships_addressee (addressee_id, status)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+    try {
+        wl_pdo()->exec(
+            "CREATE TABLE IF NOT EXISTS friendships (
+              id           VARCHAR(64) NOT NULL PRIMARY KEY,
+              pair_key     VARCHAR(129) NOT NULL,
+              requester_id VARCHAR(64) NOT NULL,
+              addressee_id VARCHAR(64) NOT NULL,
+              status       ENUM('pending','accepted','declined') NOT NULL DEFAULT 'pending',
+              created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              updated_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+              UNIQUE KEY uq_friendships_pair (pair_key),
+              INDEX idx_friendships_requester (requester_id, status),
+              INDEX idx_friendships_addressee (addressee_id, status),
+              CONSTRAINT fk_fr_requester FOREIGN KEY (requester_id) REFERENCES users(id) ON DELETE CASCADE,
+              CONSTRAINT fk_fr_addressee FOREIGN KEY (addressee_id) REFERENCES users(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+        );
+    } catch (Throwable $e) {
+        try {
+            wl_pdo()->exec($sql);
+        } catch (Throwable $ignored) {
+            // Table may already exist.
+        }
+    }
+}
+
+function wl_load_user_row(string $userId): ?array
+{
+    $stmt = wl_pdo()->prepare(
+        'SELECT id, name, avatar_id, avatar_url FROM users WHERE id = :id LIMIT 1'
+    );
+    $stmt->execute(['id' => $userId]);
+    $row = $stmt->fetch();
+    return $row ?: null;
+}
+
+function wl_friendship_payload(array $row, string $viewerId): array
+{
+    $otherId = $row['requester_id'] === $viewerId ? $row['addressee_id'] : $row['requester_id'];
+    $other = wl_load_user_row($otherId);
+    return [
+        'id' => $row['id'],
+        'status' => $row['status'],
+        'incoming' => $row['addressee_id'] === $viewerId && $row['status'] === 'pending',
+        'outgoing' => $row['requester_id'] === $viewerId && $row['status'] === 'pending',
+        'user' => $other ? wl_public_user_payload($other) : ['id' => $otherId, 'name' => 'Medlem'],
+        'createdAt' => gmdate('c', strtotime((string) $row['created_at'])),
+    ];
+}
+
+function wl_find_friendship(string $a, string $b): ?array
+{
+    wl_migrate_friendships();
+    $stmt = wl_pdo()->prepare('SELECT * FROM friendships WHERE pair_key = :k LIMIT 1');
+    $stmt->execute(['k' => wl_pair_key($a, $b)]);
+    $row = $stmt->fetch();
+    return $row ?: null;
+}
+
+function wl_list_friends(string $userId): array
+{
+    wl_migrate_friendships();
+    $stmt = wl_pdo()->prepare(
+        'SELECT * FROM friendships
+         WHERE requester_id = :me OR addressee_id = :me
+         ORDER BY updated_at DESC'
+    );
+    $stmt->execute(['me' => $userId]);
+    $friends = [];
+    $incoming = [];
+    $outgoing = [];
+    foreach ($stmt->fetchAll() as $row) {
+        $payload = wl_friendship_payload($row, $userId);
+        if ($row['status'] === 'accepted') {
+            $friends[] = $payload;
+        } elseif ($row['status'] === 'pending' && $row['addressee_id'] === $userId) {
+            $incoming[] = $payload;
+        } elseif ($row['status'] === 'pending' && $row['requester_id'] === $userId) {
+            $outgoing[] = $payload;
+        }
+    }
+    return [
+        'friends' => $friends,
+        'incoming' => $incoming,
+        'outgoing' => $outgoing,
+    ];
+}
+
+function wl_send_friend_request(string $me, string $otherId): array
+{
+    wl_migrate_friendships();
+    if ($me === $otherId) {
+        wl_error('Du kan ikke sende en anmodning til dig selv.');
+    }
+    if (!wl_load_user_row($otherId)) {
+        wl_error('Bruger ikke fundet.', 404);
+    }
+    $existing = wl_find_friendship($me, $otherId);
+    if ($existing) {
+        if ($existing['status'] === 'accepted') {
+            wl_error('I er allerede venner.');
+        }
+        if ($existing['status'] === 'pending' && $existing['requester_id'] === $me) {
+            wl_error('Anmodningen er allerede sendt.');
+        }
+        if ($existing['status'] === 'pending' && $existing['addressee_id'] === $me) {
+            wl_pdo()->prepare(
+                "UPDATE friendships SET status = 'accepted', updated_at = NOW() WHERE id = :id"
+            )->execute(['id' => $existing['id']]);
+            $fresh = wl_find_friendship($me, $otherId);
+            return wl_friendship_payload($fresh, $me);
+        }
+        wl_pdo()->prepare(
+            "UPDATE friendships SET requester_id = :req, addressee_id = :addr, status = 'pending', updated_at = NOW()
+             WHERE id = :id"
+        )->execute(['req' => $me, 'addr' => $otherId, 'id' => $existing['id']]);
+        $fresh = wl_find_friendship($me, $otherId);
+        return wl_friendship_payload($fresh, $me);
+    }
+
+    $id = wl_new_id('fr');
+    wl_pdo()->prepare(
+        'INSERT INTO friendships (id, pair_key, requester_id, addressee_id, status)
+         VALUES (:id, :pair, :req, :addr, :status)'
+    )->execute([
+        'id' => $id,
+        'pair' => wl_pair_key($me, $otherId),
+        'req' => $me,
+        'addr' => $otherId,
+        'status' => 'pending',
+    ]);
+    $fresh = wl_find_friendship($me, $otherId);
+    return wl_friendship_payload($fresh, $me);
+}
+
+function wl_require_friendship(string $id, string $userId): array
+{
+    wl_migrate_friendships();
+    $stmt = wl_pdo()->prepare('SELECT * FROM friendships WHERE id = :id LIMIT 1');
+    $stmt->execute(['id' => $id]);
+    $row = $stmt->fetch();
+    if (!$row) {
+        wl_error('Anmodning ikke fundet.', 404);
+    }
+    if ($row['requester_id'] !== $userId && $row['addressee_id'] !== $userId) {
+        wl_error('Ikke tilladt.', 403);
+    }
+    return $row;
+}
+
+function wl_respond_friendship(string $id, string $userId, string $status): array
+{
+    $row = wl_require_friendship($id, $userId);
+    if ($row['status'] !== 'pending') {
+        wl_error('Anmodningen er allerede behandlet.');
+    }
+    if ($row['addressee_id'] !== $userId) {
+        wl_error('Kun modtageren kan svare på anmodningen.', 403);
+    }
+    if ($status !== 'accepted' && $status !== 'declined') {
+        wl_error('Ugyldigt svar.');
+    }
+    wl_pdo()->prepare(
+        'UPDATE friendships SET status = :status, updated_at = NOW() WHERE id = :id'
+    )->execute(['status' => $status, 'id' => $id]);
+    $fresh = wl_find_friendship($row['requester_id'], $row['addressee_id']);
+    return wl_friendship_payload($fresh, $userId);
+}
+
+function wl_remove_friendship(string $id, string $userId): void
+{
+    wl_require_friendship($id, $userId);
+    wl_pdo()->prepare('DELETE FROM friendships WHERE id = :id')->execute(['id' => $id]);
 }

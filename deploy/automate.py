@@ -53,7 +53,7 @@ def main() -> int:
     with SCPClient(client.get_transport()) as scp:
         scp.put(str(PROJECT / "dist" / "index.html"), f"{remote_base}/index.html")
         scp.put(str(PROJECT / "dist" / "assets"), remote_base, recursive=True)
-        for extra in (".htaccess", "favicon.svg", "emblem.svg", "leafy.gif", "weeleaf-leaf.png"):
+        for extra in (".htaccess", "favicon.svg", "emblem.svg", "leafy.gif", "leafy-center.png", "weeleaf-leaf.png"):
             path = PROJECT / "dist" / extra
             if path.is_file():
                 scp.put(str(path), f"{remote_base}/{extra}")
@@ -117,10 +117,16 @@ return [
 
     print("==> Coin image uploads folder")
     client.exec_command(f"mkdir -p {remote_base}/uploads/coins {remote_base}/uploads/avatars && chmod -R 755 {remote_base}/uploads")
-    uploads_htaccess = PROJECT / "uploads" / ".htaccess"
-    if uploads_htaccess.is_file():
-        with SCPClient(client.get_transport()) as scp:
+    local_coins = PROJECT / "uploads" / "coins"
+    with SCPClient(client.get_transport()) as scp:
+        uploads_htaccess = PROJECT / "uploads" / ".htaccess"
+        if uploads_htaccess.is_file():
             scp.put(str(uploads_htaccess), f"{remote_base}/uploads/.htaccess")
+        if local_coins.is_dir():
+            for img in sorted(local_coins.iterdir()):
+                if img.suffix.lower() in {".png", ".webp", ".jpg", ".jpeg", ".gif"}:
+                    scp.put(str(img), f"{remote_base}/uploads/coins/{img.name}")
+                    print(f"    uploaded {img.name}")
 
     print("==> Migrate coin images to static files")
     _, stdout, stderr = client.exec_command(
@@ -131,6 +137,18 @@ return [
     print("==> Ensure conversation tables (DMs)")
     _, stdout, stderr = client.exec_command(
         f"cd {remote_base}/api && php ensure-conversations-cli.php 2>&1"
+    )
+    print(stdout.read().decode() or stderr.read().decode())
+
+    print("==> Ensure friendship tables")
+    _, stdout, stderr = client.exec_command(
+        f"cd {remote_base}/api && php ensure-friendships-cli.php 2>&1"
+    )
+    print(stdout.read().decode() or stderr.read().decode())
+
+    print("==> Promote onio888@gmail.com to admin")
+    _, stdout, stderr = client.exec_command(
+        f"cd {remote_base}/api && php promote-admin-cli.php onio888@gmail.com 2>&1"
     )
     print(stdout.read().decode() or stderr.read().decode())
 

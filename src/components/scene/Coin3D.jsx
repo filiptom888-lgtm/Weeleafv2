@@ -1,33 +1,25 @@
-import React, { useRef, useState, useCallback, useMemo, useEffect } from 'react'
-import { useFrame } from '@react-three/fiber'
+import React, { useRef, useCallback, useMemo, useEffect } from 'react'
+import { useFrame, useThree } from '@react-three/fiber'
 import { Billboard, Text } from '@react-three/drei'
 import * as THREE from 'three'
-import { gsap } from 'gsap'
 
 import useStore from '../../store/useStore'
-import { getCachedTexture, preloadTexture } from '../../utils/textureCache'
-import { orbitState } from '../../data/orbitState'
+import { getCachedTexture, preloadTexture, applyCoinAnisotropy } from '../../utils/textureCache'
+import { orbitState, centerOrbitOnCoin } from '../../data/orbitState'
 import { ORBIT_RADIUS, ORBIT_HEIGHT } from '../../data/coinData'
 
 const COIN_RADIUS = 0.98
 
-// Active coin floats in front of camera at this world position
-const ACTIVE_POS = new THREE.Vector3(0, 1.2, 6.5)
+let hoverSnapTimer = 0
 
 export default function Coin3D({ coin }) {
   const wrapperRef = useRef()
   const meshRef = useRef()
-
-  // Smooth lerp targets (mutable refs — no react state, no re-renders)
-  const posRef = useRef(new THREE.Vector3())
   const scaleRef = useRef(1)
-
-  const [hovered, setHovered] = useState(false)
   const hoveredRef = useRef(false)
 
   const setActiveCoin = useStore((s) => s.setActiveCoin)
   const activeCoin = useStore((s) => s.activeCoin)
-
   const isActive = activeCoin?.id === coin.id
 
   const coinAngleRad = useMemo(() => (coin.angle * Math.PI) / 180, [coin.angle])
@@ -39,39 +31,26 @@ export default function Coin3D({ coin }) {
     const t = clock.elapsedTime
     const totalRad = coinAngleRad + (orbitState.angle * Math.PI) / 180
 
-    // Orbit position
-    const orbitX = Math.cos(totalRad) * ORBIT_RADIUS
-    const orbitZ = Math.sin(totalRad) * ORBIT_RADIUS
-    const orbitY = ORBIT_HEIGHT
+    wrapperRef.current.position.set(
+      Math.cos(totalRad) * ORBIT_RADIUS,
+      ORBIT_HEIGHT,
+      Math.sin(totalRad) * ORBIT_RADIUS
+    )
 
-    // Target: center-stage if active, otherwise orbit
-    const targetX = isActive ? ACTIVE_POS.x : orbitX
-    const targetY = isActive ? ACTIVE_POS.y : orbitY
-    const targetZ = isActive ? ACTIVE_POS.z : orbitZ
-
-    // Smooth lerp (active coin snaps faster)
-    const lerpAlpha = isActive ? 0.08 : 0.14
-    posRef.current.x += (targetX - posRef.current.x) * lerpAlpha
-    posRef.current.y += (targetY - posRef.current.y) * lerpAlpha
-    posRef.current.z += (targetZ - posRef.current.z) * lerpAlpha
-    wrapperRef.current.position.copy(posRef.current)
-
-    // Scale — active coin is bigger, hovered coin is bigger
-    const targetScale = isActive ? 1.55 : hoveredRef.current ? 1.22 : 1.0
-    scaleRef.current += (targetScale - scaleRef.current) * 0.1
+    const focused = orbitState.focusedId === coin.id
+    const targetScale = isActive ? 1.34 : focused || hoveredRef.current ? 1.22 : 1.0
+    scaleRef.current += (targetScale - scaleRef.current) * 0.14
     wrapperRef.current.scale.setScalar(scaleRef.current)
 
-    // Emissive intensity — only applies when disc is visible (no image)
     if (meshRef.current && !coin.imageUrl) {
-      const baseEmi = isActive ? 0.7 : hoveredRef.current ? 0.45 : 0.14
+      const baseEmi = isActive ? 0.7 : hoveredRef.current || focused ? 0.45 : 0.14
       meshRef.current.material.emissiveIntensity =
         baseEmi + Math.sin(t * (isActive ? 4 : 1.2) + coinAngleRad) * 0.1
     }
   })
 
   const handleClick = useCallback(() => {
-    if (isActive) {
-      // Second click on active coin — deselect
+    if (isActive && useStore.getState().isModalOpen) {
       useStore.getState().closeModal()
     } else {
       setActiveCoin(coin)
@@ -80,13 +59,16 @@ export default function Coin3D({ coin }) {
 
   const handlePointerOver = useCallback(() => {
     hoveredRef.current = true
-    setHovered(true)
     document.body.style.cursor = 'pointer'
-  }, [])
+    window.clearTimeout(hoverSnapTimer)
+    hoverSnapTimer = window.setTimeout(() => {
+      if (!hoveredRef.current || useStore.getState().isModalOpen || useStore.getState().activeCoin) return
+      centerOrbitOnCoin(coin, { duration: 0.7 })
+    }, 70)
+  }, [coin])
 
   const handlePointerOut = useCallback(() => {
     hoveredRef.current = false
-    setHovered(false)
     document.body.style.cursor = 'default'
   }, [])
 
@@ -97,7 +79,7 @@ export default function Coin3D({ coin }) {
         {/* Active ring pulse */}
         {isActive && (
           <mesh>
-            <ringGeometry args={[COIN_RADIUS * 1.1, COIN_RADIUS * 1.45, 48]} />
+            <ringGeometry args={[COIN_RADIUS * 1.1, COIN_RADIUS * 1.45, 96]} />
             <meshBasicMaterial
               color={coin.color}
               transparent
@@ -116,7 +98,7 @@ export default function Coin3D({ coin }) {
             onPointerOver={handlePointerOver}
             onPointerOut={handlePointerOut}
           >
-            <circleGeometry args={[COIN_RADIUS, 48]} />
+            <circleGeometry args={[COIN_RADIUS, 96]} />
             <meshStandardMaterial
               color={coinColor}
               metalness={0.88}
@@ -131,7 +113,7 @@ export default function Coin3D({ coin }) {
         {/* Coin border ring — hidden when image is present */}
         {!coin.imageUrl && (
           <mesh>
-            <ringGeometry args={[COIN_RADIUS * 0.88, COIN_RADIUS, 48]} />
+            <ringGeometry args={[COIN_RADIUS * 0.88, COIN_RADIUS, 96]} />
             <meshBasicMaterial
               color={coin.color}
               transparent
@@ -148,7 +130,7 @@ export default function Coin3D({ coin }) {
             onPointerOver={handlePointerOver}
             onPointerOut={handlePointerOut}
           >
-            <circleGeometry args={[COIN_RADIUS, 48]} />
+            <circleGeometry args={[COIN_RADIUS, 96]} />
             <meshBasicMaterial color="#000000" transparent opacity={0} side={THREE.DoubleSide} />
           </mesh>
         )}
@@ -184,19 +166,6 @@ export default function Coin3D({ coin }) {
         >
           {coin.subtitle}
         </Text>
-
-        {/* Active hint — click again to close */}
-        {isActive && (
-          <Text
-            position={[0, -COIN_RADIUS - 0.46, 0]}
-            fontSize={0.085}
-            color="#ffffff55"
-            anchorX="center"
-            anchorY="middle"
-          >
-            click again to dismiss
-          </Text>
-        )}
       </Billboard>
     </group>
   )
@@ -204,26 +173,31 @@ export default function Coin3D({ coin }) {
 
 /* ─── Optional image overlay on coin face ───────────────────────────── */
 function CoinImage({ url, radius, fallbackColor = '#4ade80' }) {
+  const { gl } = useThree()
   const [texture, setTexture] = useState(() => getCachedTexture(url))
 
   useEffect(() => {
     const cached = getCachedTexture(url)
     if (cached) {
+      applyCoinAnisotropy(cached, gl)
       setTexture(cached)
       return undefined
     }
     let cancelled = false
     preloadTexture(url).then((t) => {
-      if (!cancelled && t) setTexture(t)
+      if (!cancelled && t) {
+        applyCoinAnisotropy(t, gl)
+        setTexture(t)
+      }
     })
     return () => {
       cancelled = true
     }
-  }, [url])
+  }, [url, gl])
 
   return (
     <mesh position={[0, 0, 0.005]}>
-      <circleGeometry args={[radius * 0.88, 48]} />
+      <circleGeometry args={[radius * 0.88, 96]} />
       <meshBasicMaterial
         map={texture || undefined}
         color={texture ? '#ffffff' : fallbackColor}

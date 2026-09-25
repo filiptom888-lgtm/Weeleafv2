@@ -492,7 +492,7 @@ export default function Scene() {
       const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 800 : 1
       const delta = raw * unit
       gsap.to(orbitState, {
-        angle: orbitState.angle + delta * 0.18,
+        angle: orbitState.angle + delta * 0.252,
         duration: 0.5,
         ease: 'power2.out',
         overwrite: 'auto',

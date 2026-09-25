@@ -5,12 +5,10 @@ import * as THREE from 'three'
 
 import useStore from '../../store/useStore'
 import { getCachedTexture, preloadTexture, applyCoinAnisotropy } from '../../utils/textureCache'
-import { orbitState, centerOrbitOnCoin } from '../../data/orbitState'
+import { orbitState } from '../../data/orbitState'
 import { ORBIT_RADIUS, ORBIT_HEIGHT } from '../../data/coinData'
 
 const COIN_RADIUS = 0.98
-
-let hoverSnapTimer = 0
 
 export default function Coin3D({ coin }) {
   const wrapperRef = useRef()
@@ -60,12 +58,7 @@ export default function Coin3D({ coin }) {
   const handlePointerOver = useCallback(() => {
     hoveredRef.current = true
     document.body.style.cursor = 'pointer'
-    window.clearTimeout(hoverSnapTimer)
-    hoverSnapTimer = window.setTimeout(() => {
-      if (!hoveredRef.current || useStore.getState().isModalOpen || useStore.getState().activeCoin) return
-      centerOrbitOnCoin(coin, { duration: 0.7 })
-    }, 70)
-  }, [coin])
+  }, [])
 
   const handlePointerOut = useCallback(() => {
     hoveredRef.current = false
@@ -75,20 +68,6 @@ export default function Coin3D({ coin }) {
   return (
     <group ref={wrapperRef}>
       <Billboard>
-
-        {/* Active ring pulse */}
-        {isActive && (
-          <mesh>
-            <ringGeometry args={[COIN_RADIUS * 1.1, COIN_RADIUS * 1.45, 96]} />
-            <meshBasicMaterial
-              color={coin.color}
-              transparent
-              opacity={0.25}
-              depthWrite={false}
-              side={THREE.DoubleSide}
-            />
-          </mesh>
-        )}
 
         {/* Coin disc — hidden when image is present */}
         {!coin.imageUrl && (

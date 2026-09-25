@@ -191,6 +191,7 @@ function wl_migrate_user_avatars(): void
     } catch (Throwable $e) {
         // Column may already exist on some hosts.
     }
+    wl_repair_custom_avatars();
 }
 
 function wl_valid_avatar_id(?string $avatarId): ?string
@@ -199,8 +200,11 @@ function wl_valid_avatar_id(?string $avatarId): ?string
         return null;
     }
     $id = (string) $avatarId;
+    if ($id === 'custom') {
+        return 'custom';
+    }
     if (!in_array($id, ['1', '2', '3', '4', '5'], true)) {
-        wl_error('avatarId skal være 1–5 eller null.');
+        wl_error('avatarId skal være 1–5, custom eller null.');
     }
     return $id;
 }
@@ -235,6 +239,13 @@ function wl_user_payload(array $row): array
     } else {
         $payload['avatarUrl'] = null;
     }
+    $resolved = wl_resolve_avatar(
+        isset($row['id']) ? (string) $row['id'] : null,
+        $payload['avatarId'],
+        $payload['avatarUrl']
+    );
+    $payload['avatarId'] = $resolved['avatarId'];
+    $payload['avatarUrl'] = $resolved['avatarUrl'];
     return $payload;
 }
 
@@ -369,14 +380,17 @@ function wl_fetch_posts(): array
     $posts = [];
     foreach ($rows as $row) {
         $tags = $row['tags'] ? json_decode($row['tags'], true) : [];
-        $avatarId = $row['author_avatar_id'] ?? null;
-        $avatarUrl = $row['author_avatar_url'] ?? null;
+        $avatar = wl_resolve_avatar(
+            isset($row['author_id']) ? (string) $row['author_id'] : null,
+            isset($row['author_avatar_id']) ? (string) $row['author_avatar_id'] : null,
+            isset($row['author_avatar_url']) ? (string) $row['author_avatar_url'] : null
+        );
         $posts[] = [
             'id' => $row['id'],
             'author' => $row['author'],
             'authorId' => $row['author_id'],
-            'authorAvatarId' => $avatarId !== null && $avatarId !== '' ? (string) $avatarId : null,
-            'authorAvatarUrl' => $avatarUrl !== null && $avatarUrl !== '' ? (string) $avatarUrl : null,
+            'authorAvatarId' => $avatar['avatarId'],
+            'authorAvatarUrl' => $avatar['avatarUrl'],
             'title' => $row['title'],
             'body' => $row['body'],
             'imageUrl' => $row['image_url'] ?? '',
@@ -426,13 +440,16 @@ function wl_fetch_submissions(?string $userId = null): array
 
 function wl_public_user_payload(array $row): array
 {
-    $avatarId = $row['avatar_id'] ?? $row['avatarId'] ?? null;
-    $avatarUrl = $row['avatar_url'] ?? $row['avatarUrl'] ?? null;
+    $avatar = wl_resolve_avatar(
+        isset($row['id']) ? (string) $row['id'] : null,
+        isset($row['avatar_id']) ? (string) $row['avatar_id'] : (isset($row['avatarId']) ? (string) $row['avatarId'] : null),
+        isset($row['avatar_url']) ? (string) $row['avatar_url'] : (isset($row['avatarUrl']) ? (string) $row['avatarUrl'] : null)
+    );
     return [
         'id' => $row['id'],
         'name' => $row['name'],
-        'avatarId' => $avatarId !== null && $avatarId !== '' ? (string) $avatarId : null,
-        'avatarUrl' => $avatarUrl !== null && $avatarUrl !== '' ? (string) $avatarUrl : null,
+        'avatarId' => $avatar['avatarId'],
+        'avatarUrl' => $avatar['avatarUrl'],
     ];
 }
 

@@ -1,26 +1,10 @@
-import VantaBackground from './VantaBackground'
-import { useGraphicsTier } from '../../hooks/useLiteGraphics'
+import SoftClouds from './SoftClouds'
 
-/** Main-page backdrop — warm sunset clouds, CSS fallback on weak GPUs. */
-export default function MainSceneBackground({ visible = true, paused = false }) {
-  const tier = useGraphicsTier()
-  const useVanta = tier === 'full'
-  const vantaPaused = paused || !visible
-
+/** Main-page backdrop — CSS sunset sky and soft drifting clouds. */
+export default function MainSceneBackground({ paused = false }) {
   return (
     <div className="fixed inset-0 z-0" aria-hidden>
-      <div className="absolute inset-0 sky-lite" />
-
-      {useVanta && (
-        <VantaBackground
-          effect="clouds"
-          preset="clouds"
-          className="absolute inset-0"
-          visible={visible}
-          paused={vantaPaused}
-        />
-      )}
-
+      <SoftClouds paused={paused} className="absolute inset-0" />
       <div
         className="absolute inset-0 pointer-events-none"
         style={{

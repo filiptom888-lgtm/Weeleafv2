@@ -22,7 +22,7 @@ function probeWebGL() {
   }
 }
 
-/** full = Vanta + full 3D | lite = CSS sky + reduced 3D | minimal = CSS only, no Vanta */
+/** full = full 3D | lite = reduced 3D | minimal = lowest 3D settings */
 export function detectGraphicsTier() {
   if (typeof window === 'undefined') return 'full'
 
@@ -38,7 +38,7 @@ export function detectGraphicsTier() {
   return 'full'
 }
 
-/** Skip Vanta WebGL on weak devices — use CSS sky gradients instead. */
+/** True when the 3D scene should use the lighter quality settings. */
 export function useLiteGraphics() {
   const [tier, setTier] = useState(() => detectGraphicsTier())
 

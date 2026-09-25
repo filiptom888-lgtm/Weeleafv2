@@ -52,7 +52,7 @@ export default function App() {
 
   return (
     <div className="relative w-screen h-screen overflow-hidden select-none">
-      <MainSceneBackground visible={sceneVisible} paused={isModalOpen} />
+      <MainSceneBackground paused={isModalOpen} />
 
       <div
         className="absolute inset-0 z-10"

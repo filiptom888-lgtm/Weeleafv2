@@ -94,30 +94,74 @@ button, input, textarea, select {
   border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
-@keyframes skyDrift {
-  0%, 100% {
-    background-position: 50% 0%;
-  }
-  50% {
-    background-position: 52% 100%;
-  }
-}
-
 .sky-lite {
+  overflow: hidden;
   background-color: #e8a878;
   background-image:
     radial-gradient(ellipse 90% 55% at 50% 8%, rgba(255, 214, 160, 0.7) 0%, transparent 58%),
-    radial-gradient(ellipse 70% 42% at 22% 38%, rgba(255, 248, 238, 0.72) 0%, transparent 52%),
-    radial-gradient(ellipse 75% 40% at 78% 48%, rgba(255, 244, 230, 0.62) 0%, transparent 50%),
-    radial-gradient(ellipse 80% 36% at 50% 72%, rgba(255, 238, 220, 0.5) 0%, transparent 55%),
     linear-gradient(180deg, #e8a878 0%, #ebb588 18%, #f0c49a 40%, #f6d9b8 62%, #faf0e4 82%, #f7f1e8 100%);
-  background-size: 200% 200% !important;
-  animation: skyDrift 32s ease-in-out infinite;
 }
 
-.modal-sky-lite {
-  background-size: 200% 200% !important;
-  animation: skyDrift 28s ease-in-out infinite;
+.sky-cloud {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, rgba(255, 252, 246, 0.92) 0%, rgba(255, 244, 228, 0.45) 46%, transparent 72%);
+  will-change: transform;
+}
+
+.sky-cloud-a {
+  width: 46vw;
+  height: 22vw;
+  left: -8%;
+  top: 18%;
+  animation: cloudDriftA 48s ease-in-out infinite;
+}
+.sky-cloud-b {
+  width: 38vw;
+  height: 18vw;
+  right: -6%;
+  top: 34%;
+  animation: cloudDriftB 56s ease-in-out infinite;
+}
+.sky-cloud-c {
+  width: 52vw;
+  height: 20vw;
+  left: 22%;
+  top: 8%;
+  opacity: 0.75;
+  animation: cloudDriftC 64s ease-in-out infinite;
+}
+.sky-cloud-d {
+  width: 34vw;
+  height: 16vw;
+  left: 8%;
+  top: 52%;
+  opacity: 0.7;
+  animation: cloudDriftA 72s ease-in-out infinite reverse;
+}
+
+.sky-lite.is-paused .sky-cloud {
+  animation-play-state: paused;
+}
+
+@keyframes cloudDriftA {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(6vw, -1.5vh, 0); }
+}
+@keyframes cloudDriftB {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(-7vw, 2vh, 0); }
+}
+@keyframes cloudDriftC {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(4vw, 1.5vh, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sky-cloud {
+    animation: none;
+  }
 }
 
 .wl-close {

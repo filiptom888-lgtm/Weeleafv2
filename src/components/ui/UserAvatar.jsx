@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { WL } from '../../styles/modalTheme'
 import { avatarSrc } from '../../data/avatarOptions'
 
@@ -21,17 +22,19 @@ export default function UserAvatar({
   className = '',
 }) {
   const src = avatarSrc(avatarId, avatarUrl)
+  const [brokenSrc, setBrokenSrc] = useState('')
   const radius = rounded === 'square' ? 'rounded-2xl' : 'rounded-full'
   const px = typeof size === 'number' ? size : 40
   const textSize = px >= 56 ? 'text-lg' : px >= 40 ? 'text-xs' : 'text-[10px]'
 
-  if (src) {
+  if (src && brokenSrc !== src) {
     return (
       <img
         src={src}
         alt=""
         className={`flex-shrink-0 object-cover ${radius} ${className}`}
         style={{ width: px, height: px, boxShadow: '0 0 0 2px #fff' }}
+        onError={() => setBrokenSrc(src)}
       />
     )
   }

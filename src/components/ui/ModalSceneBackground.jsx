@@ -1,24 +1,9 @@
-import { useEffect, useState } from 'react'
 import useStore from '../../store/useStore'
-import VantaBackground from './VantaBackground'
-import { useGraphicsTier } from '../../hooks/useLiteGraphics'
+import SoftClouds from './SoftClouds'
 
-/**
- * Shared warm-sky layer for all popups — Vanta loads once, stays mounted.
- * Falls back to CSS gradient on low-GPU / older PCs.
- */
+/** Shared warm-sky layer for popups. Same CSS clouds as the main page. */
 export default function ModalSceneBackground() {
   const isModalOpen = useStore((s) => s.isModalOpen)
-  const modalScrollRoot = useStore((s) => s.modalScrollRoot)
-  const tier = useGraphicsTier()
-  const useVanta = tier === 'full'
-  const [ready, setReady] = useState(false)
-
-  useEffect(() => {
-    if (!useVanta) return undefined
-    const t = window.setTimeout(() => setReady(true), 1200)
-    return () => window.clearTimeout(t)
-  }, [useVanta])
 
   return (
     <div
@@ -30,17 +15,7 @@ export default function ModalSceneBackground() {
       }}
       aria-hidden={!isModalOpen}
     >
-      <div className="absolute inset-0 sky-lite modal-sky-lite" />
-      {useVanta && (
-        <VantaBackground
-          effect="clouds"
-          preset="cloudsLight"
-          enabled={ready}
-          persistent
-          paused={!isModalOpen}
-          pauseOnScrollEl={modalScrollRoot}
-        />
-      )}
+      <SoftClouds paused={!isModalOpen} className="absolute inset-0" />
       <div
         className="absolute inset-0 z-[2]"
         style={{

@@ -125,6 +125,93 @@ function wl_crop_square_avatar_binary(string $binary, int $size = 256): array
     return ['binary' => $out, 'mime' => $mime, 'ext' => $ext];
 }
 
+function wl_public_media_url(?string $url): ?string
+{
+    if ($url === null || $url === '') {
+        return null;
+    }
+    if (preg_match('#^https?://#i', $url) || str_starts_with($url, 'data:')) {
+        return $url;
+    }
+    $base = rtrim((string) (wl_config()['public_url'] ?? ''), '/');
+    if ($base === '' || ($url[0] ?? '') !== '/') {
+        return $url;
+    }
+    return $base . $url;
+}
+
+/** Public path for a custom avatar file already on disk, or null. */
+function wl_avatar_disk_url(string $userId): ?string
+{
+    $safeId = wl_sanitize_asset_id($userId);
+    $dir = wl_uploads_avatars_dir();
+    foreach (['webp', 'png', 'jpg', 'jpeg', 'gif'] as $ext) {
+        $path = $dir . '/' . $safeId . '.' . $ext;
+        if (!is_file($path)) {
+            continue;
+        }
+        $v = (string) (filemtime($path) ?: time());
+        return '/uploads/avatars/' . $safeId . '.' . $ext . '?v=' . $v;
+    }
+    return null;
+}
+
+/**
+ * Custom photos must be a real file under /uploads/avatars.
+ * Truncated data-URLs (the column is only 512 chars) cannot be shown to anyone else.
+ */
+function wl_resolve_avatar(?string $userId, ?string $avatarId, ?string $avatarUrl): array
+{
+    $id = ($avatarId !== null && $avatarId !== '') ? (string) $avatarId : null;
+    $url = ($avatarUrl !== null && $avatarUrl !== '') ? (string) $avatarUrl : null;
+
+    if ($id === 'custom' && $userId !== null && $userId !== '') {
+        $disk = wl_avatar_disk_url($userId);
+        if ($disk !== null) {
+            $url = $disk;
+        } elseif ($url !== null && (str_starts_with($url, 'data:') || !str_starts_with(strtok($url, '?') ?: '', '/uploads/avatars/'))) {
+            $url = null;
+            $id = null;
+        }
+    }
+
+    return [
+        'avatarId' => $id,
+        'avatarUrl' => $url !== null ? wl_public_media_url($url) : null,
+    ];
+}
+
+function wl_repair_custom_avatars(): void
+{
+    try {
+        $rows = wl_pdo()->query(
+            "SELECT id, avatar_url FROM users WHERE avatar_id = 'custom'"
+        )->fetchAll();
+    } catch (Throwable $e) {
+        return;
+    }
+
+    $fix = wl_pdo()->prepare('UPDATE users SET avatar_url = :url WHERE id = :id');
+    $clear = wl_pdo()->prepare('UPDATE users SET avatar_id = NULL, avatar_url = NULL WHERE id = :id');
+
+    foreach ($rows as $row) {
+        $userId = (string) $row['id'];
+        $disk = wl_avatar_disk_url($userId);
+        $current = (string) ($row['avatar_url'] ?? '');
+        if ($disk !== null) {
+            $diskPath = strtok($disk, '?') ?: $disk;
+            $currentPath = strtok($current, '?') ?: $current;
+            if ($currentPath !== $diskPath) {
+                $fix->execute(['url' => $disk, 'id' => $userId]);
+            }
+            continue;
+        }
+        if ($current === '' || str_starts_with($current, 'data:') || !str_starts_with(strtok($current, '?') ?: '', '/uploads/avatars/')) {
+            $clear->execute(['id' => $userId]);
+        }
+    }
+}
+
 function wl_save_user_avatar_file(string $userId, string $binary): string
 {
     $resized = wl_crop_square_avatar_binary($binary, 256);

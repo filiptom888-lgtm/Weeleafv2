@@ -3,7 +3,7 @@ import { COINS as DEFAULT_COINS } from '../data/coinData'
 import { DEFAULT_SHOP_CATEGORIES } from '../data/shopData'
 import { DEFAULT_BLOG_POSTS } from '../data/blogData'
 import { api, getToken, setToken, loadCachedUser, saveCachedUser } from '../api/wlApi'
-import { preloadCoinImages } from '../utils/textureCache'
+import { preloadCoinImages, preloadTexture } from '../utils/textureCache'
 import { centerOrbitOnCoin, orbitDeltaToCoin } from '../data/orbitState'
 
 const DEFAULT_STATS = [

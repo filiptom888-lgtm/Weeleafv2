@@ -22,6 +22,25 @@ function wl_uploads_avatars_dir(): string
     return wl_uploads_dir('avatars');
 }
 
+/**
+ * Avatar files live outside public_html so a Git deploy cannot delete them.
+ * From api/lib this is the domain folder, next to public_html.
+ */
+function wl_avatar_storage_dir(): string
+{
+    $dir = dirname(__DIR__, 3) . '/wl-avatars';
+    if (!is_dir($dir)) {
+        mkdir($dir, 0755, true);
+    }
+    return $dir;
+}
+
+/** Durable store first, then the older public uploads folder. */
+function wl_avatar_search_dirs(): array
+{
+    return [wl_avatar_storage_dir(), wl_uploads_avatars_dir()];
+}
+
 function wl_sanitize_asset_id(string $id): string
 {
     $safe = preg_replace('/[^a-z0-9_-]/i', '', $id);
@@ -83,6 +102,24 @@ function wl_validate_image_upload(array $file, int $maxBytes = 5242880): string
     return $binary;
 }
 
+/** Write a GD image to a real file. Output buffering is unreliable for webp. */
+function wl_write_gd_image($image, bool $webp): array
+{
+    $tmp = tempnam(sys_get_temp_dir(), 'wlav');
+    if ($tmp === false) {
+        wl_error('Kunne ikke gemme billedet.');
+    }
+    $ok = $webp ? @imagewebp($image, $tmp, 82) : @imagepng($image, $tmp, 8);
+    $binary = ($ok && is_file($tmp)) ? (string) file_get_contents($tmp) : '';
+    @unlink($tmp);
+    if ($binary === '') {
+        wl_error('Kunne ikke gemme billedet.');
+    }
+    return $webp
+        ? ['binary' => $binary, 'mime' => 'image/webp', 'ext' => 'webp']
+        : ['binary' => $binary, 'mime' => 'image/png', 'ext' => 'png'];
+}
+
 /** Center-crop to square, then resize + compress for avatars */
 function wl_crop_square_avatar_binary(string $binary, int $size = 256): array
 {
@@ -109,20 +146,9 @@ function wl_crop_square_avatar_binary(string $binary, int $size = 256): array
     imagecopyresampled($dst, $src, 0, 0, $sx, $sy, $size, $size, $side, $side);
     imagedestroy($src);
 
-    ob_start();
-    if (function_exists('imagewebp')) {
-        imagewebp($dst, null, 82);
-        $mime = 'image/webp';
-        $ext = 'webp';
-    } else {
-        imagepng($dst, null, 8);
-        $mime = 'image/png';
-        $ext = 'png';
-    }
-    $out = ob_get_clean();
+    $encoded = wl_write_gd_image($dst, function_exists('imagewebp'));
     imagedestroy($dst);
-
-    return ['binary' => $out, 'mime' => $mime, 'ext' => $ext];
+    return $encoded;
 }
 
 function wl_public_media_url(?string $url): ?string
@@ -140,25 +166,57 @@ function wl_public_media_url(?string $url): ?string
     return $base . $url;
 }
 
-/** Public path for a custom avatar file already on disk, or null. */
-function wl_avatar_disk_url(string $userId): ?string
+function wl_avatar_file_info(string $userId): ?array
 {
     $safeId = wl_sanitize_asset_id($userId);
-    $dir = wl_uploads_avatars_dir();
-    foreach (['webp', 'png', 'jpg', 'jpeg', 'gif'] as $ext) {
-        $path = $dir . '/' . $safeId . '.' . $ext;
-        if (!is_file($path)) {
-            continue;
+    foreach (wl_avatar_search_dirs() as $dir) {
+        foreach (['webp', 'png', 'jpg', 'jpeg', 'gif'] as $ext) {
+            $path = $dir . '/' . $safeId . '.' . $ext;
+            if (!is_file($path) || filesize($path) < 32) {
+                continue;
+            }
+            $mime = match ($ext) {
+                'png' => 'image/png',
+                'gif' => 'image/gif',
+                'jpg', 'jpeg' => 'image/jpeg',
+                default => 'image/webp',
+            };
+            return [
+                'path' => $path,
+                'mime' => $mime,
+                'mtime' => (int) (filemtime($path) ?: time()),
+            ];
         }
-        $v = (string) (filemtime($path) ?: time());
-        return '/uploads/avatars/' . $safeId . '.' . $ext . '?v=' . $v;
     }
     return null;
 }
 
+/** Stable public path. The file itself is served by GET /api/avatars/{id}. */
+function wl_avatar_disk_url(string $userId): ?string
+{
+    $info = wl_avatar_file_info($userId);
+    if ($info === null) {
+        return null;
+    }
+    return '/api/avatars/' . rawurlencode(wl_sanitize_asset_id($userId)) . '?v=' . $info['mtime'];
+}
+
+function wl_output_avatar(string $userId): void
+{
+    $info = wl_avatar_file_info($userId);
+    if ($info === null) {
+        wl_error('Avatar ikke fundet.', 404);
+    }
+    header('Content-Type: ' . $info['mime']);
+    header('Cache-Control: public, max-age=86400');
+    header('Content-Length: ' . (string) filesize($info['path']));
+    readfile($info['path']);
+    exit;
+}
+
 /**
- * Custom photos must be a real file under /uploads/avatars.
- * Truncated data-URLs (the column is only 512 chars) cannot be shown to anyone else.
+ * Custom photos must be a real file. A missing or truncated URL is cleared
+ * so other users see initials instead of a broken image.
  */
 function wl_resolve_avatar(?string $userId, ?string $avatarId, ?string $avatarUrl): array
 {
@@ -169,7 +227,7 @@ function wl_resolve_avatar(?string $userId, ?string $avatarId, ?string $avatarUr
         $disk = wl_avatar_disk_url($userId);
         if ($disk !== null) {
             $url = $disk;
-        } elseif ($url !== null && (str_starts_with($url, 'data:') || !str_starts_with(strtok($url, '?') ?: '', '/uploads/avatars/'))) {
+        } else {
             $url = null;
             $id = null;
         }
@@ -202,13 +260,11 @@ function wl_repair_custom_avatars(): void
             $diskPath = strtok($disk, '?') ?: $disk;
             $currentPath = strtok($current, '?') ?: $current;
             if ($currentPath !== $diskPath) {
-                $fix->execute(['url' => $disk, 'id' => $userId]);
+                $fix->execute(['url' => $diskPath, 'id' => $userId]);
             }
             continue;
         }
-        if ($current === '' || str_starts_with($current, 'data:') || !str_starts_with(strtok($current, '?') ?: '', '/uploads/avatars/')) {
-            $clear->execute(['id' => $userId]);
-        }
+        $clear->execute(['id' => $userId]);
     }
 }
 
@@ -217,19 +273,24 @@ function wl_save_user_avatar_file(string $userId, string $binary): string
     $resized = wl_crop_square_avatar_binary($binary, 256);
     $ext = $resized['ext'] ?? 'webp';
     $safeId = wl_sanitize_asset_id($userId);
-    $path = wl_uploads_avatars_dir() . '/' . $safeId . '.' . $ext;
-    file_put_contents($path, $resized['binary']);
-    return wl_media_public_path('avatars', $userId, $ext) . '?v=' . time();
+    wl_delete_user_avatar_file($userId);
+    $path = wl_avatar_storage_dir() . '/' . $safeId . '.' . $ext;
+    $written = file_put_contents($path, $resized['binary']);
+    if ($written === false || $written < 32) {
+        wl_error('Kunne ikke gemme avataren.');
+    }
+    return wl_avatar_disk_url($userId) ?? ('/api/avatars/' . rawurlencode($safeId));
 }
 
 function wl_delete_user_avatar_file(string $userId): void
 {
     $safeId = wl_sanitize_asset_id($userId);
-    $dir = wl_uploads_avatars_dir();
-    foreach (['webp', 'png', 'jpg', 'jpeg', 'gif'] as $ext) {
-        $path = $dir . '/' . $safeId . '.' . $ext;
-        if (is_file($path)) {
-            @unlink($path);
+    foreach (wl_avatar_search_dirs() as $dir) {
+        foreach (['webp', 'png', 'jpg', 'jpeg', 'gif'] as $ext) {
+            $path = $dir . '/' . $safeId . '.' . $ext;
+            if (is_file($path)) {
+                @unlink($path);
+            }
         }
     }
 }

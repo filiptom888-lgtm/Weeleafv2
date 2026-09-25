@@ -15,6 +15,10 @@ try {
     match (true) {
         $uri === '/health' && $method === 'GET' => wl_ok(['status' => 'ok']),
 
+        preg_match('#^/avatars/([^/]+)$#', $uri, $m) && $method === 'GET' => (function () use ($m) {
+            wl_output_avatar(rawurldecode($m[1]));
+        })(),
+
         $uri === '/config' && $method === 'GET' => (function () {
             wl_migrate_conversations();
             wl_migrate_friendships();
@@ -449,11 +453,20 @@ try {
             if (($prevRow['avatar_id'] ?? '') === 'custom' && $avatarId !== 'custom') {
                 wl_delete_user_avatar_file($user['id']);
             }
+            $avatarUrl = null;
+            if ($avatarId === 'custom') {
+                $avatarUrl = wl_avatar_disk_url($user['id']);
+                if ($avatarUrl === null) {
+                    $avatarId = null;
+                } else {
+                    $avatarUrl = strtok($avatarUrl, '?') ?: $avatarUrl;
+                }
+            }
             wl_pdo()->prepare(
                 'UPDATE users SET avatar_id = :avatar_id, avatar_url = :avatar_url WHERE id = :id'
             )->execute([
                 'avatar_id' => $avatarId,
-                'avatar_url' => $avatarId === 'custom' ? ($user['avatarUrl'] ?? null) : null,
+                'avatar_url' => $avatarUrl,
                 'id' => $user['id'],
             ]);
             $stmt = wl_pdo()->prepare(
@@ -470,11 +483,12 @@ try {
             }
             $binary = wl_validate_image_upload($_FILES['image'], 5 * 1024 * 1024);
             $imageUrl = wl_save_user_avatar_file($user['id'], $binary);
+            $storedUrl = strtok($imageUrl, '?') ?: $imageUrl;
             wl_pdo()->prepare(
                 'UPDATE users SET avatar_id = :avatar_id, avatar_url = :avatar_url WHERE id = :id'
             )->execute([
                 'avatar_id' => 'custom',
-                'avatar_url' => $imageUrl,
+                'avatar_url' => $storedUrl,
                 'id' => $user['id'],
             ]);
             $stmt = wl_pdo()->prepare(
